@@ -1,14 +1,16 @@
 import express from 'express';
 import { User } from '../models/User.model';
-import { SMSService } from '../services/sms.service';
-import { GeolocationService } from '../services/geolocation.service';
+import { smsService } from '../services/sms.service';
+import { geolocationService } from '../services/geolocation.service';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
-// ✅ ENVOYER L'OTP
+// ✅ ENVOYER L'OTP AVEC GÉOLOCALISATION
 router.post('/send-otp', async (req, res) => {
   try {
     const { phoneNumber, countryCode } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress;
 
     if (!phoneNumber || !countryCode) {
       return res.status(400).json({
@@ -19,47 +21,95 @@ router.post('/send-otp', async (req, res) => {
 
     // Valider le format du numéro
     const cleanPhone = phoneNumber.replace(/\s/g, '');
-    if (!/^\+?[1-9]\d{1,14}$/.test(cleanPhone)) {
+    const isValidPhone = await smsService.validatePhoneNumber(cleanPhone);
+    
+    if (!isValidPhone) {
       return res.status(400).json({
         success: false,
-        error: 'Format de numéro invalide'
+        error: 'Numéro de téléphone invalide ou pays non autorisé'
+      });
+    }
+
+    // Géolocalisation
+    const geoData = await geolocationService.getLocationByIP(clientIP);
+    
+    if (!geolocationService.isCountryAllowed(geoData.countryCode)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Service non disponible dans votre pays'
+      });
+    }
+
+    // Vérifier la cohérence pays numéro/pays géolocalisation
+    const phoneCountryCode = cleanPhone.substring(1, 3);
+    const isConsistent = geolocationService.validateCountryConsistency(
+      phoneCountryCode,
+      geoData.countryCode
+    );
+
+    if (!isConsistent) {
+      return res.status(400).json({
+        success: false,
+        error: 'Incohérence détectée entre votre numéro et votre localisation'
       });
     }
 
     // Générer OTP
-    const otpCode = SMSService.generateOTP();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); 
-    
-    // Vérifier si l'utilisateur existe
+    const otpCode = smsService.generateOTP();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Chercher ou créer l'utilisateur
     let user = await User.findOne({ phoneNumber: cleanPhone });
 
     if (user) {
       // Mettre à jour l'OTP existant
       user.otpCode = otpCode;
       user.otpExpires = otpExpires;
+      user.ipAddress = clientIP;
+      user.detectedCountry = geoData.country;
+      user.timezone = geoData.timezone;
     } else {
-      // Créer un nouvel utilisateur temporaire
+      // Créer un nouvel utilisateur
       user = new User({
         phoneNumber: cleanPhone,
         countryCode,
-        countryName: 'À définir', // Sera mis à jour après nationalité
+        countryName: geoData.country,
+        ipAddress: clientIP,
+        detectedCountry: geoData.country,
+        timezone: geoData.timezone,
         otpCode,
         otpExpires,
         isVerified: false,
         pseudo: 'Utilisateur',
-        community: 'À définir'
+        community: 'À définir',
+        nationality: 'À définir',
+        nationalityName: 'À définir'
       });
     }
 
     await user.save();
 
     // Envoyer l'OTP
-    const smsResult = await SMSService.sendOTP(cleanPhone, otpCode);
+    const smsResult = await smsService.sendOTP(cleanPhone, otpCode);
+
+    if (!smsResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de l\'envoi du SMS'
+      });
+    }
 
     res.json({
       success: true,
-      message: smsResult.message,
-      otpCode: process.env.NODE_ENV === 'development' ? otpCode : undefined
+      message: 'Code de vérification envoyé',
+      // En développement, retourner l'OTP pour les tests
+      ...(process.env.NODE_ENV === 'development' && { otpCode }),
+      user: {
+        id: user._id,
+        phoneNumber: user.phoneNumber,
+        countryCode: user.countryCode,
+        countryName: user.countryName
+      }
     });
 
   } catch (error: any) {
@@ -94,18 +144,11 @@ router.post('/verify-otp', async (req, res) => {
       });
     }
 
-    // Vérifier l'OTP et son expiration
-    if (user.otpCode !== otpCode) {
+    // Vérifier l'OTP
+    if (!user.isOTPValid(otpCode)) {
       return res.status(400).json({
         success: false,
-        error: 'Code OTP incorrect'
-      });
-    }
-
-    if (user.otpExpires && new Date() > user.otpExpires) {
-      return res.status(400).json({
-        success: false,
-        error: 'Code OTP expiré'
+        error: 'Code OTP incorrect ou expiré'
       });
     }
 
@@ -116,14 +159,28 @@ router.post('/verify-otp', async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
+    // Générer le token JWT
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        phoneNumber: user.phoneNumber,
+        isAdmin: user.isAdmin
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
+    );
+
     res.json({
       success: true,
-      message: 'OTP vérifié avec succès',
+      message: 'Compte vérifié avec succès',
+      token,
       user: {
         id: user._id,
         phoneNumber: user.phoneNumber,
         countryCode: user.countryCode,
-        isVerified: user.isVerified
+        countryName: user.countryName,
+        isVerified: user.isVerified,
+        isAdmin: user.isAdmin
       }
     });
 
@@ -165,8 +222,7 @@ router.post('/set-nationality', async (req, res) => {
     user.nationalityName = nationalityName;
     
     // Générer le nom de la communauté
-    const cleanCountry = user.countryName.replace(/\s/g, '');
-    user.community = `${nationalityName}En${cleanCountry}`;
+    user.community = user.generateCommunityName();
 
     await user.save();
 
@@ -177,7 +233,8 @@ router.post('/set-nationality', async (req, res) => {
         id: user._id,
         community: user.community,
         nationality: user.nationality,
-        nationalityName: user.nationalityName
+        nationalityName: user.nationalityName,
+        countryName: user.countryName
       }
     });
 
