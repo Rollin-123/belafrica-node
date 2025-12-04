@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SupabaseService = void 0;
 exports.getSupabaseService = getSupabaseService;
+// src/services/supabase.service.ts
 const supabase_js_1 = require("@supabase/supabase-js");
 class SupabaseService {
     constructor() {
@@ -9,8 +10,10 @@ class SupabaseService {
         const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
         this.client = (0, supabase_js_1.createClient)(supabaseUrl, supabaseKey);
     }
+    // ✅ CRÉER un utilisateur
     async createUser(userData) {
         try {
+            // Générer une communauté si non fournie
             const community = userData.community ||
                 `${userData.nationalityName}En${userData.countryName.replace(/\s/g, '')}`;
             const { data, error } = await this.client
@@ -42,6 +45,7 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ TROUVER un utilisateur par téléphone
     async findUserByPhone(phoneNumber) {
         try {
             const { data, error } = await this.client
@@ -66,6 +70,7 @@ class SupabaseService {
             return null;
         }
     }
+    // ✅ TROUVER un utilisateur par pseudo (excluant un ID)
     async findUserByPseudo(pseudo, excludeUserId) {
         try {
             let query = this.client
@@ -85,6 +90,7 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ RÉCUPÉRER un utilisateur par ID
     async getUserById(userId) {
         try {
             const { data, error } = await this.client
@@ -101,12 +107,15 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ SAUVEGARDER un OTP
     async saveOTP(otpData) {
         try {
+            // Supprimer les anciens OTP pour ce numéro
             await this.client
                 .from('otp_codes')
                 .delete()
                 .eq('phone_number', otpData.phoneNumber);
+            // Insérer le nouveau
             const { error } = await this.client
                 .from('otp_codes')
                 .insert([{
@@ -127,6 +136,7 @@ class SupabaseService {
             return false;
         }
     }
+    // ✅ VÉRIFIER SI UN OTP VALIDE EXISTE
     async hasValidOTP(phoneNumber) {
         try {
             const now = new Date().toISOString();
@@ -150,10 +160,12 @@ class SupabaseService {
             return false;
         }
     }
+    // ✅ VÉRIFICATION OTP STRICTE
     async verifyOTP(phoneNumber, code) {
         try {
             console.log('🔍 [SUPABASE] Vérification OTP:', { phoneNumber, code });
             const now = new Date().toISOString();
+            // 1. Chercher un OTP non vérifié, non expiré
             const { data, error } = await this.client
                 .from('otp_codes')
                 .select('*')
@@ -171,6 +183,7 @@ class SupabaseService {
                 return false;
             }
             console.log('✅ [SUPABASE] OTP trouvé:', data.id);
+            // 2. Marquer comme vérifié
             const { error: updateError } = await this.client
                 .from('otp_codes')
                 .update({
@@ -190,6 +203,7 @@ class SupabaseService {
             return false;
         }
     }
+    // ✅ SUPPRIMER LES OTP EXPIRÉS
     async cleanupExpiredOTPs() {
         try {
             const { error } = await this.client
@@ -204,6 +218,7 @@ class SupabaseService {
             console.error('❌ Erreur nettoyage OTP:', error);
         }
     }
+    // ✅ PROMOUVOIR un utilisateur admin
     async promoteToAdmin(userId, permissions) {
         try {
             const { error } = await this.client
@@ -226,6 +241,7 @@ class SupabaseService {
             return false;
         }
     }
+    // ✅ CRÉER un post
     async createPost(postData) {
         try {
             const { data, error } = await this.client
@@ -254,6 +270,7 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ RÉCUPÉRER les posts d'une communauté
     async getCommunityPosts(community, visibility = 'national') {
         try {
             const { data, error } = await this.client
@@ -276,6 +293,7 @@ class SupabaseService {
             return [];
         }
     }
+    // ✅ RÉCUPÉRER les posts internationaux
     async getInternationalPosts() {
         try {
             const { data, error } = await this.client
@@ -297,6 +315,7 @@ class SupabaseService {
             return [];
         }
     }
+    // ✅ RÉCUPÉRER un post par ID
     async getPostById(postId) {
         try {
             const { data, error } = await this.client
@@ -313,8 +332,10 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ AIMER/ENLEVER un like
     async togglePostLike(postId, userId) {
         try {
+            // Vérifier si l'utilisateur a déjà liké
             const { data: existingLike, error: checkError } = await this.client
                 .from('post_likes')
                 .select('*')
@@ -324,10 +345,12 @@ class SupabaseService {
             if (checkError && checkError.code !== 'PGRST116')
                 throw checkError;
             if (existingLike) {
+                // Supprimer le like
                 await this.client
                     .from('post_likes')
                     .delete()
                     .eq('id', existingLike.id);
+                // Décrémenter le compteur
                 await this.client
                     .from('posts')
                     .update({ likes_count: this.client.rpc('decrement', { x: 1 }) })
@@ -336,12 +359,14 @@ class SupabaseService {
                 return { liked: false, likesCount: await this.getPostLikesCount(postId) };
             }
             else {
+                // Ajouter le like
                 await this.client
                     .from('post_likes')
                     .insert([{
                         post_id: postId,
                         user_id: userId
                     }]);
+                // Incrémenter le compteur
                 await this.client
                     .from('posts')
                     .update({ likes_count: this.client.rpc('increment', { x: 1 }) })
@@ -355,6 +380,7 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ COMPTER les likes d'un post
     async getPostLikesCount(postId) {
         try {
             const { count, error } = await this.client
@@ -369,6 +395,7 @@ class SupabaseService {
             return 0;
         }
     }
+    // ✅ SUPPRIMER un post
     async deletePost(postId) {
         try {
             const { error } = await this.client
@@ -384,6 +411,7 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ CRÉER une demande admin
     async createAdminRequest(requestData) {
         try {
             const { data, error } = await this.client
@@ -407,8 +435,10 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ GÉNÉRER un code admin
     async generateAdminCode(codeData) {
         try {
+            // Générer un code aléatoire
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
             let code = '';
             for (let i = 0; i < 6; i++) {
@@ -439,6 +469,7 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ VALIDER un code admin
     async validateAdminCode(code, community) {
         try {
             const { data, error } = await this.client
@@ -462,6 +493,7 @@ class SupabaseService {
             return false;
         }
     }
+    // ✅ MARQUER un code admin comme utilisé
     async markAdminCodeAsUsed(code, userId) {
         try {
             const { error } = await this.client
@@ -481,6 +513,7 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ RÉCUPÉRER les demandes admin en attente
     async getPendingAdminRequests() {
         try {
             const { data, error } = await this.client
@@ -500,6 +533,7 @@ class SupabaseService {
             return [];
         }
     }
+    // ✅ METTRE À JOUR le statut d'une demande admin
     async updateAdminRequestStatus(requestId, status) {
         try {
             const { error } = await this.client
@@ -520,6 +554,7 @@ class SupabaseService {
             return false;
         }
     }
+    // ✅ RÉCUPÉRER les codes admin générés
     async getGeneratedAdminCodes() {
         try {
             const { data, error } = await this.client
@@ -539,6 +574,7 @@ class SupabaseService {
             return [];
         }
     }
+    // ✅ METTRE À JOUR un utilisateur
     async updateUser(userId, updateData) {
         try {
             const { data, error } = await this.client
@@ -560,6 +596,7 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ RÉCUPÉRER les utilisateurs d'une communauté
     async getCommunityUsers(community, excludeUserId) {
         try {
             let query = this.client
@@ -580,6 +617,7 @@ class SupabaseService {
             return [];
         }
     }
+    // ✅ RÉCUPÉRER les conversations d'un utilisateur
     async getUserConversations(userId) {
         try {
             const { data, error } = await this.client
@@ -601,6 +639,7 @@ class SupabaseService {
             return [];
         }
     }
+    // ✅ VÉRIFIER l'accès à une conversation
     async checkConversationAccess(conversationId, userId) {
         try {
             const { data, error } = await this.client
@@ -622,6 +661,7 @@ class SupabaseService {
             return false;
         }
     }
+    // ✅ RÉCUPÉRER les messages d'une conversation
     async getConversationMessages(conversationId, limit = 50, offset = 0) {
         try {
             const { data, error } = await this.client
@@ -642,6 +682,7 @@ class SupabaseService {
             return [];
         }
     }
+    // ✅ CRÉER un message
     async createMessage(messageData) {
         try {
             const { data, error } = await this.client
@@ -662,6 +703,7 @@ class SupabaseService {
                 .single();
             if (error)
                 throw error;
+            // Mettre à jour la date de modification de la conversation
             await this.client
                 .from('conversations')
                 .update({ updated_at: new Date().toISOString() })
@@ -674,6 +716,7 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ CRÉER une conversation
     async createConversation(conversationData) {
         try {
             const { data, error } = await this.client
@@ -699,6 +742,7 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ AJOUTER un participant à une conversation
     async addConversationParticipant(conversationId, userId, isAdmin = false) {
         try {
             const { error } = await this.client
@@ -718,6 +762,7 @@ class SupabaseService {
             throw error;
         }
     }
+    // ✅ RÉCUPÉRER le groupe d'une communauté
     async getCommunityGroup(communityId) {
         try {
             const { data, error } = await this.client
@@ -740,6 +785,7 @@ class SupabaseService {
             return null;
         }
     }
+    // ✅ RÉCUPÉRER les participants d'une conversation
     async getConversationParticipants(conversationId) {
         try {
             const { data, error } = await this.client
@@ -759,8 +805,10 @@ class SupabaseService {
             return [];
         }
     }
+    // ✅ RÉCUPÉRER une conversation privée
     async getPrivateConversation(userId1, userId2) {
         try {
+            // Rechercher une conversation privée entre les deux utilisateurs
             const { data, error } = await this.client
                 .from('conversations')
                 .select(`
@@ -771,6 +819,7 @@ class SupabaseService {
                 .contains('participants.user_id', [userId1, userId2]);
             if (error)
                 throw error;
+            // Vérifier que les deux utilisateurs sont présents
             const validConversation = data?.find((conv) => {
                 const participantIds = conv.participants.map((p) => p.user_id);
                 return participantIds.includes(userId1) && participantIds.includes(userId2);
@@ -784,6 +833,7 @@ class SupabaseService {
     }
 }
 exports.SupabaseService = SupabaseService;
+// Singleton
 let supabaseInstance = null;
 function getSupabaseService() {
     if (!supabaseInstance) {

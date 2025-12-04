@@ -1,16 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.APP_CONSTANTS = void 0;
+// src/utils/constants.ts
 exports.APP_CONSTANTS = {
     APP_NAME: 'BELAFRICA',
     VERSION: '1.0.0',
+    // Durées d'expiration
     OTP_EXPIRY_MINUTES: 10,
     POST_NATIONAL_EXPIRY_HOURS: 48,
     POST_INTERNATIONAL_EXPIRY_HOURS: 72,
     ADMIN_CODE_EXPIRY_HOURS: 72,
+    // Limites
     MAX_POST_LENGTH: 1000,
     MAX_IMAGE_SIZE_MB: 5,
     MAX_FILE_SIZE_MB: 10,
+    // Pays autorisés
     ALLOWED_COUNTRIES: [
         { code: '+33', name: 'France', countryCode: 'FR' },
         { code: '+32', name: 'Belgique', countryCode: 'BE' },
@@ -23,6 +27,7 @@ exports.APP_CONSTANTS = {
         { code: '+7', name: 'Russie', countryCode: 'RU' },
         { code: '+375', name: 'Biélorussie', countryCode: 'BY' }
     ],
+    // Nationalités africaines
     AFRICAN_COUNTRIES: [
         { code: 'DZ', name: 'Algérie', flag: '🇩🇿' },
         { code: 'AO', name: 'Angola', flag: '🇦🇴' },

@@ -12,7 +12,7 @@ class AdminService {
             for (let i = 0; i < 6; i++) {
                 code += chars.charAt(Math.floor(Math.random() * chars.length));
             }
-            const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+            const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 heures
             const { data, error } = await supabase
                 .from('admin_codes')
                 .insert([{
@@ -45,6 +45,7 @@ class AdminService {
             if (error) {
                 return { success: false, error: 'Code invalide ou expiré' };
             }
+            // Marquer comme utilisé
             await supabase
                 .from('admin_codes')
                 .update({
@@ -53,6 +54,7 @@ class AdminService {
                 used_at: new Date().toISOString()
             })
                 .eq('id', data.id);
+            // Promouvoir l'utilisateur
             await supabase
                 .from('users')
                 .update({

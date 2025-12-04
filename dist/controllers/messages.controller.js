@@ -4,10 +4,14 @@ exports.getSupabaseService = exports.messagesController = exports.MessagesContro
 const supabase_factory_1 = require("../services/supabase.factory");
 Object.defineProperty(exports, "getSupabaseService", { enumerable: true, get: function () { return supabase_factory_1.getSupabaseService; } });
 class MessagesController {
+    // getConversations(arg0: string, authMiddleware: (req: Request, res: Response, next: NextFunction) => Promise<Response<any, Record<string, any>> | undefined>, getConversations: any) {
+    //     throw new Error('Method not implemented.');
+    // }
     async getConversations(req, res) {
         try {
             const userId = req.userId;
             const supabase = req.supabase;
+            // Logique à implémenter
             res.json({
                 success: true,
                 conversations: []
@@ -25,6 +29,7 @@ class MessagesController {
         try {
             const conversationId = req.params.id;
             const supabase = req.supabase;
+            // Logique à implémenter
             res.json({
                 success: true,
                 messages: []
@@ -42,6 +47,7 @@ class MessagesController {
         try {
             const { participantIds } = req.body;
             const supabase = req.supabase;
+            // Logique à implémenter
             res.json({
                 success: true,
                 conversation: {}
@@ -99,6 +105,7 @@ class MessagesController {
         try {
             const { communityId, name } = req.body;
             const supabase = req.supabase;
+            // Logique à implémenter
             res.json({
                 success: true,
                 group: {}
@@ -116,6 +123,7 @@ class MessagesController {
         try {
             const communityId = req.params.communityId;
             const supabase = req.supabase;
+            // Logique à implémenter
             res.json({
                 success: true,
                 group: {}

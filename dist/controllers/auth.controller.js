@@ -17,6 +17,7 @@ class AuthController {
                 });
             }
             const fullPhoneNumber = `${countryCode}${phoneNumber.replace(/\D/g, '')}`;
+            // Vérifier si l'utilisateur existe déjà
             const existingUser = await this.authService.findUserByPhone(fullPhoneNumber);
             if (existingUser) {
                 return res.json({
@@ -27,7 +28,9 @@ class AuthController {
                     phoneNumber: fullPhoneNumber
                 });
             }
+            // Générer OTP
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+            // Sauvegarder OTP
             await this.authService.saveOTP(fullPhoneNumber, otpCode);
             console.log(`🔑 OTP généré: ${otpCode} pour ${fullPhoneNumber}`);
             res.json({
@@ -57,6 +60,7 @@ class AuthController {
                     error: 'Numéro et code requis'
                 });
             }
+            // Vérifier OTP
             const isValid = await this.authService.verifyOTP(phoneNumber, code);
             if (!isValid) {
                 return res.status(401).json({
@@ -64,6 +68,7 @@ class AuthController {
                     error: 'Code OTP invalide ou expiré'
                 });
             }
+            // Vérifier si l'utilisateur existe
             const user = await this.authService.findUserByPhone(phoneNumber);
             if (user) {
                 return res.json({
@@ -109,6 +114,7 @@ class AuthController {
                     });
                 }
             }
+            // Vérifier si l'utilisateur existe déjà
             const existingUser = await this.authService.findUserByPhone(profileData.phoneNumber);
             if (existingUser) {
                 return res.status(409).json({
@@ -116,6 +122,7 @@ class AuthController {
                     error: 'Un utilisateur avec ce numéro existe déjà'
                 });
             }
+            // Formater la communauté
             function formatCommunityName(nationalityName, countryName) {
                 const cleanNationality = nationalityName
                     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -143,6 +150,7 @@ class AuthController {
             };
             const user = await this.authService.createUser(userData);
             console.log('✅ Utilisateur créé:', user.id);
+            // Générer token (simplifié pour l'instant)
             const token = `belafrica_${user.id}_${Date.now()}`;
             res.json({
                 success: true,

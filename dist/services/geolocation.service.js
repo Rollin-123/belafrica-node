@@ -5,20 +5,25 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GeolocationService = void 0;
 exports.getGeolocationService = getGeolocationService;
+// src/services/geolocation.service.ts
 const axios_1 = __importDefault(require("axios"));
 class GeolocationService {
     constructor() {
         this.ipApiUrl = process.env.IP_API_URL || 'http://ip-api.com/json';
         this.ipifyUrl = process.env.IPIFY_URL || 'https://api.ipify.org?format=json';
     }
+    // ✅ DÉTECTER la localisation par IP (VRAI SERVICE)
     async detectLocationByIP(ip) {
         try {
+            // Récupérer l'IP si non fournie
             let clientIP = ip;
             if (!clientIP || clientIP === '::1' || clientIP === '127.0.0.1') {
+                // En local ou IP invalide, utiliser ipify
                 const ipResponse = await axios_1.default.get(this.ipifyUrl);
                 clientIP = ipResponse.data.ip;
             }
             console.log('🌍 Détection localisation IP:', clientIP);
+            // Récupérer les infos de géolocalisation
             const geoResponse = await axios_1.default.get(`${this.ipApiUrl}/${clientIP}`);
             const geoData = geoResponse.data;
             if (geoData.status === 'fail') {
@@ -36,6 +41,7 @@ class GeolocationService {
         }
         catch (error) {
             console.error('❌ Erreur géolocalisation:', error.message);
+            // Retourner des valeurs par défaut en cas d'erreur
             return {
                 ip: ip || 'inconnu',
                 country: 'Inconnu',
@@ -45,24 +51,27 @@ class GeolocationService {
             };
         }
     }
+    // ✅ VÉRIFIER la correspondance pays/téléphone (STRICTE)
     validatePhoneCountryMatch(phoneCountryCode, detectedCountryCode) {
+        // Mapping des codes téléphoniques vers codes pays ISO
         const phoneToCountryMap = {
-            '+33': ['FR'],
-            '+32': ['BE'],
-            '+49': ['DE'],
-            '+39': ['IT'],
-            '+34': ['ES'],
-            '+41': ['CH'],
-            '+44': ['GB'],
-            '+1': ['CA'],
-            '+7': ['RU'],
-            '+375': ['BY']
+            '+33': ['FR'], // France
+            '+32': ['BE'], // Belgique
+            '+49': ['DE'], // Allemagne
+            '+39': ['IT'], // Italie
+            '+34': ['ES'], // Espagne
+            '+41': ['CH'], // Suisse
+            '+44': ['GB'], // Royaume-Uni
+            '+1': ['CA'], // Canada
+            '+7': ['RU'], // Russie
+            '+375': ['BY'] // Biélorussie
         };
         const allowedCountries = phoneToCountryMap[phoneCountryCode];
         if (!allowedCountries) {
             console.warn(`⚠️ Code téléphone non mappé: ${phoneCountryCode}`);
-            return false;
+            return false; // REFUSER les codes non autorisés
         }
+        // Nettoyer le code pays détecté
         const cleanDetectedCode = detectedCountryCode.toUpperCase().trim();
         const isValid = allowedCountries.includes(cleanDetectedCode);
         console.log('🌍 Validation pays:', {
@@ -73,6 +82,7 @@ class GeolocationService {
         });
         return isValid;
     }
+    // ✅ VÉRIFIER si l'utilisateur est dans un pays autorisé
     async validateUserLocation(phoneCountryCode, userIP) {
         try {
             const location = await this.detectLocationByIP(userIP);
@@ -88,12 +98,13 @@ class GeolocationService {
         catch (error) {
             console.error('❌ Erreur validation localisation:', error);
             return {
-                isValid: false,
+                isValid: false, // En cas d'erreur, on refuse (sécurité)
                 error: error.message,
                 ip: userIP
             };
         }
     }
+    // ✅ OBTENIR la liste des pays autorisés pour un code téléphone
     getAllowedCountriesForPhoneCode(phoneCountryCode) {
         const phoneToCountryMap = {
             '+33': ['France'],
@@ -109,12 +120,14 @@ class GeolocationService {
         };
         return phoneToCountryMap[phoneCountryCode] || [];
     }
+    // ✅ VÉRIFIER si un pays est autorisé
     isCountryAllowed(countryCode) {
         const allowedCountries = ['FR', 'BE', 'DE', 'IT', 'ES', 'CH', 'GB', 'CA', 'RU', 'BY'];
         return allowedCountries.includes(countryCode.toUpperCase());
     }
 }
 exports.GeolocationService = GeolocationService;
+// Singleton
 let geolocationInstance;
 function getGeolocationService() {
     if (!geolocationInstance) {

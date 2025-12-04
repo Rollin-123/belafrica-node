@@ -75,6 +75,7 @@ class AdminController {
         try {
             const supabase = req.supabase;
             const userId = req.userId;
+            // Vérifier que l'utilisateur est admin
             const { data: user, error: userError } = await supabase
                 .from('users')
                 .select('is_admin')

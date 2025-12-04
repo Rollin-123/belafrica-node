@@ -4,6 +4,7 @@ exports.getSupabaseService = exports.postsController = exports.PostsController =
 const supabase_factory_1 = require("../services/supabase.factory");
 Object.defineProperty(exports, "getSupabaseService", { enumerable: true, get: function () { return supabase_factory_1.getSupabaseService; } });
 class PostsController {
+    // ✅ RÉCUPÉRER les posts nationaux
     async getNationalPosts(req, res) {
         try {
             const userId = req.user?.id;
@@ -11,6 +12,7 @@ class PostsController {
                 return res.status(401).json({ error: 'Non autorisé' });
             }
             const supabase = (0, supabase_factory_1.getSupabaseService)();
+            // Récupérer l'utilisateur pour sa communauté
             const user = await supabase.getUserById(userId);
             if (!user) {
                 return res.status(404).json({ error: 'Utilisateur non trouvé' });
@@ -30,6 +32,7 @@ class PostsController {
             });
         }
     }
+    // ✅ RÉCUPÉRER les posts internationaux
     async getInternationalPosts(req, res) {
         try {
             const userId = req.user?.id;
@@ -51,6 +54,7 @@ class PostsController {
             });
         }
     }
+    // ✅ CRÉER un post - CORRECTION ICI !
     async createPost(req, res) {
         try {
             const userId = req.user?.id;
@@ -61,10 +65,12 @@ class PostsController {
                 });
             }
             const supabase = (0, supabase_factory_1.getSupabaseService)();
+            // Récupérer l'utilisateur
             const user = await supabase.getUserById(userId);
             if (!user) {
                 return res.status(404).json({ error: 'Utilisateur non trouvé' });
             }
+            // Vérifier les permissions
             if (!user.is_admin) {
                 return res.status(403).json({ error: 'Permissions insuffisantes' });
             }
@@ -74,20 +80,22 @@ class PostsController {
             if (visibility === 'international' && !user.admin_permissions?.includes('post_international')) {
                 return res.status(403).json({ error: 'Pas de permission pour poster en international' });
             }
+            // Calculer la date d'expiration
             const expiresAt = new Date();
             if (visibility === 'national') {
-                expiresAt.setHours(expiresAt.getHours() + 48);
+                expiresAt.setHours(expiresAt.getHours() + 48); // 48h
             }
             else {
-                expiresAt.setHours(expiresAt.getHours() + 72);
+                expiresAt.setHours(expiresAt.getHours() + 72); // 72h
             }
+            // ✅ CORRECTION : Utilisez l'interface PostData correctement
             const postData = {
-                authorId: userId,
+                authorId: userId, // <-- authorId au lieu de author_id
                 content,
                 imageUrls: imageUrls || [],
                 visibility,
                 community: user.community,
-                expiresAt
+                expiresAt // <-- expiresAt au lieu de expires_at
             };
             const post = await supabase.createPost(postData);
             res.json({
@@ -110,6 +118,7 @@ class PostsController {
             });
         }
     }
+    // ✅ AIMER un post
     async toggleLike(req, res) {
         try {
             const userId = req.user?.id;
@@ -134,6 +143,7 @@ class PostsController {
             });
         }
     }
+    // ✅ SUPPRIMER un post
     async deletePost(req, res) {
         try {
             const userId = req.user?.id;
@@ -144,10 +154,12 @@ class PostsController {
                 });
             }
             const supabase = (0, supabase_factory_1.getSupabaseService)();
+            // Vérifier que l'utilisateur est admin
             const user = await supabase.getUserById(userId);
             if (!user || !user.is_admin) {
                 return res.status(403).json({ error: 'Permissions insuffisantes' });
             }
+            // Vérifier que le post appartient à l'utilisateur ou qu'il est super-admin
             const post = await supabase.getPostById(id);
             if (!post) {
                 return res.status(404).json({ error: 'Post non trouvé' });

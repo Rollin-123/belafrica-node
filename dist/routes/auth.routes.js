@@ -5,6 +5,7 @@ const auth_controller_1 = require("../controllers/auth.controller");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const router = (0, express_1.Router)();
 const authController = new auth_controller_1.AuthController();
+// ✅ Routes existantes
 router.post('/request-otp', (req, res) => {
     authController.requestOTP(req, res);
 });

@@ -22,6 +22,7 @@ async function adminMiddleware(req, res, next) {
                 error: 'Permissions administrateur requises'
             });
         }
+        // Vérifier les permissions spécifiques si nécessaire
         const requiredPermission = req.requiredPermission;
         if (requiredPermission && user.admin_permissions) {
             if (!user.admin_permissions.includes(requiredPermission)) {

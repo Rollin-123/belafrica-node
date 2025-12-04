@@ -23,7 +23,7 @@ class AuthService {
     }
     async saveOTP(phoneNumber, code) {
         try {
-            const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
             const { error } = await supabase
                 .from('otp_codes')
                 .insert([{
@@ -53,10 +53,11 @@ class AuthService {
                 .single();
             if (error) {
                 if (error.code === 'PGRST116') {
-                    return false;
+                    return false; // Aucun OTP valide trouvé
                 }
                 throw error;
             }
+            // Marquer comme vérifié
             await supabase
                 .from('otp_codes')
                 .update({ verified: true })

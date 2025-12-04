@@ -23,6 +23,7 @@ async function authMiddleware(req, res, next) {
                 error: 'Token invalide ou expiré'
             });
         }
+        // Ajouter les informations de l'utilisateur à la requête
         req.user = decoded;
         next();
     }

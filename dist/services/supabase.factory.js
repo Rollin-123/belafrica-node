@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getSupabaseService = getSupabaseService;
+// src/services/supabase.factory.ts
 const supabase_service_1 = require("./supabase.service");
 let supabaseInstance = null;
 function getSupabaseService() {

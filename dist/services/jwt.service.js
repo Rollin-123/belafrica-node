@@ -5,19 +5,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JWTService = void 0;
 exports.getJWTService = getJWTService;
+// src/services/jwt.service.ts
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 class JWTService {
     constructor() {
         this.secret = process.env.JWT_SECRET || 'belafrica_default_secret';
     }
+    // ✅ GÉNÉRER un token
     generateToken(payload) {
         const tokenPayload = {
             ...payload,
             iat: Math.floor(Date.now() / 1000),
-            exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
+            exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 jours
         };
         return jsonwebtoken_1.default.sign(tokenPayload, this.secret);
     }
+    // ✅ VÉRIFIER un token
     verifyToken(token) {
         try {
             const decoded = jsonwebtoken_1.default.verify(token, this.secret);
@@ -28,6 +31,7 @@ class JWTService {
             return null;
         }
     }
+    // ✅ DÉCODER un token sans vérification
     decodeToken(token) {
         try {
             const decoded = jsonwebtoken_1.default.decode(token);
@@ -38,6 +42,7 @@ class JWTService {
             return null;
         }
     }
+    // ✅ RENOUVELER un token
     refreshToken(oldToken) {
         try {
             const decoded = this.verifyToken(oldToken);
@@ -59,6 +64,7 @@ class JWTService {
     }
 }
 exports.JWTService = JWTService;
+// Singleton
 let jwtInstance;
 function getJWTService() {
     if (!jwtInstance) {
