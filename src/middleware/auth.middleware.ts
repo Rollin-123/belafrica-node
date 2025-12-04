@@ -1,89 +1,55 @@
+// src/middleware/auth.middleware.ts
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { User } from '../models/User.model';
+import { getJWTService } from '../services/jwt.service';
 
-export interface AuthRequest extends Request {
-  user?: any;
-}
-
-export const authenticateToken = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export async function authMiddleware(req: Request, res: Response, next: NextFunction) {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        error: 'Token d\'authentification manquant'
+      });
+    }
 
+    const token = authHeader.split(' ')[1];
+    
     if (!token) {
       return res.status(401).json({
-        success: false,
-        error: 'Token d\'authentification requis'
+        error: 'Token invalide'
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    
-    const user = await User.findById(decoded.userId).select('-otpCode -otpExpires');
-    
-    if (!user) {
+    const jwtService = getJWTService();
+    const decoded = jwtService.verifyToken(token);
+
+    if (!decoded) {
       return res.status(401).json({
-        success: false,
-        error: 'Utilisateur non trouvé'
+        error: 'Token invalide ou expiré'
       });
     }
 
-    if (!user.isVerified) {
-      return res.status(401).json({
-        success: false,
-        error: 'Compte non vérifié'
-      });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    return res.status(403).json({
-      success: false,
-      error: 'Token invalide ou expiré'
-    });
-  }
-};
-
-export const requireAdmin = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  if (!req.user || !req.user.isAdmin) {
-    return res.status(403).json({
-      success: false,
-      error: 'Accès administrateur requis'
-    });
-  }
-  next();
-};
-
-export const requirePermissions = (permissions: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user || !req.user.isAdmin) {
-      return res.status(403).json({
-        success: false,
-        error: 'Permissions insuffisantes'
-      });
-    }
-
-    const hasPermission = permissions.some(permission => 
-      req.user.adminPermissions.includes(permission)
-    );
-
-    if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        error: 'Permissions insuffisantes'
-      });
-    }
+    // Ajouter les informations de l'utilisateur à la requête
+    (req as any).user = decoded;
 
     next();
-  };
-};
+  } catch (error: any) {
+    console.error('🔥 Erreur authMiddleware:', error);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        error: 'Token expiré'
+      });
+    }
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        error: 'Token invalide'
+      });
+    }
+
+    return res.status(500).json({
+      error: 'Erreur d\'authentification'
+    });
+  }
+}

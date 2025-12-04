@@ -1,0 +1,36 @@
+### Test de santé
+GET http://localhost:3000/api/health
+
+### Demander OTP (Votre numéro)
+POST http://localhost:3000/api/auth/request-otp
+Content-Type: application/json
+
+{
+  "phoneNumber": "257401025",
+  "countryCode": "+375"
+}
+
+### Vérifier OTP (avec un code de test)
+POST http://localhost:3000/api/auth/verify-otp
+Content-Type: application/json
+
+{
+  "phoneNumber": "+375257401025",
+  "code": "123456"
+}
+
+### Compléter le profil
+POST http://localhost:3000/api/auth/complete-profile
+Content-Type: application/json
+
+{
+  "phoneNumber": "+375257401025",
+  "countryCode": "+375",
+  "countryName": "Biélorussie",
+  "nationality": "CM",
+  "nationalityName": "Cameroun",
+  "pseudo": "RollinLoic",
+  "email": "rollinloictianga@gmail.com",
+  "avatar": "https://example.com/avatar.jpg",
+  "community": "CamerounEnBielorussie"
+}

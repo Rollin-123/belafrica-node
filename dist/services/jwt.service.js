@@ -1,0 +1,70 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.JWTService = void 0;
+exports.getJWTService = getJWTService;
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+class JWTService {
+    constructor() {
+        this.secret = process.env.JWT_SECRET || 'belafrica_default_secret';
+    }
+    generateToken(payload) {
+        const tokenPayload = {
+            ...payload,
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
+        };
+        return jsonwebtoken_1.default.sign(tokenPayload, this.secret);
+    }
+    verifyToken(token) {
+        try {
+            const decoded = jsonwebtoken_1.default.verify(token, this.secret);
+            return decoded;
+        }
+        catch (error) {
+            console.error('❌ Erreur vérification JWT:', error);
+            return null;
+        }
+    }
+    decodeToken(token) {
+        try {
+            const decoded = jsonwebtoken_1.default.decode(token);
+            return decoded;
+        }
+        catch (error) {
+            console.error('❌ Erreur décodage JWT:', error);
+            return null;
+        }
+    }
+    refreshToken(oldToken) {
+        try {
+            const decoded = this.verifyToken(oldToken);
+            if (!decoded) {
+                return null;
+            }
+            return this.generateToken({
+                userId: decoded.userId,
+                community: decoded.community,
+                isAdmin: decoded.isAdmin,
+                permissions: decoded.permissions,
+                adminLevel: decoded.adminLevel
+            });
+        }
+        catch (error) {
+            console.error('❌ Erreur renouvellement JWT:', error);
+            return null;
+        }
+    }
+}
+exports.JWTService = JWTService;
+let jwtInstance;
+function getJWTService() {
+    if (!jwtInstance) {
+        jwtInstance = new JWTService();
+    }
+    return jwtInstance;
+}
+exports.default = JWTService;
+//# sourceMappingURL=jwt.service.js.map
