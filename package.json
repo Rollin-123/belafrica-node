@@ -11,7 +11,6 @@
     "rebuild": "npm run clean && npm run build",
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate": "psql -f supabase/migrations/001_initial_schema.sql",
-    "deploy:railway": "railway up",
     "deploy:render": "render deploy"
   },
   "keywords": [
@@ -22,7 +21,7 @@
   "author": "Rollin Loic",
   "license": "ISC",
   "dependencies": {
-    "@supabase/supabase-js": "^2.38.0",
+    "@supabase/supabase-js": "^2.86.0",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
