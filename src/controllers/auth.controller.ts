@@ -1,13 +1,19 @@
 import { Request, Response } from 'express';
-import { AuthService } from '../services/auth.service';
+import { AuthService } from '../services/auth.service'; 
+import { config } from '../config/environments';
 
 export class AuthController {
-  private authService = new AuthService();
+  private authService: AuthService;
+
+  constructor() {
+    this.authService = new AuthService();
+  }
 
   async requestOTP(req: Request, res: Response) {
     try {
       const { phoneNumber, countryCode } = req.body;
-      const userIP = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+      
+      console.log('📱 Demande OTP reçue:', { phoneNumber, countryCode });
       
       if (!phoneNumber || !countryCode) {
         return res.status(400).json({
@@ -16,19 +22,43 @@ export class AuthController {
         });
       }
 
-      const result = await this.authService.requestOTP(phoneNumber, countryCode, userIP as string);
+      const fullPhoneNumber = `${countryCode}${phoneNumber.replace(/\D/g, '')}`;
       
-      if (!result.success) {
-        return res.status(403).json(result);
+      // Vérifier si l'utilisateur existe déjà
+      const existingUser = await this.authService.findUserByPhone(fullPhoneNumber);
+      
+      if (existingUser) {
+        return res.json({
+          success: true,
+          message: 'Utilisateur existant',
+          userExists: true,
+          requiresOTP: true,
+          phoneNumber: fullPhoneNumber
+        });
       }
 
-      res.json(result);
+      // Générer OTP
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Sauvegarder OTP
+      await this.authService.saveOTP(fullPhoneNumber, otpCode);
+      
+      console.log(`🔑 OTP généré: ${otpCode} pour ${fullPhoneNumber}`);
+
+      res.json({
+        success: true,
+        message: 'OTP envoyé',
+        code: otpCode,
+        phoneNumber: fullPhoneNumber,
+        expiresIn: '10 minutes',
+        detectedCountry: 'Biélorussie'
+      });
       
     } catch (error: any) {
-      console.error('🔥 Erreur requestOTP:', error);
-      res.status(500).json({
+      console.error('❌ Erreur requestOTP:', error);
+      res.status(500).json({ 
         success: false,
-        error: 'Erreur interne du serveur'
+        error: 'Erreur interne du serveur' 
       });
     }
   }
@@ -37,6 +67,8 @@ export class AuthController {
     try {
       const { phoneNumber, code } = req.body;
       
+      console.log('🔐 Vérification OTP:', { phoneNumber, code });
+      
       if (!phoneNumber || !code) {
         return res.status(400).json({
           success: false,
@@ -44,19 +76,48 @@ export class AuthController {
         });
       }
 
-      const result = await this.authService.verifyOTP(phoneNumber, code);
+      // Vérifier OTP
+      const isValid = await this.authService.verifyOTP(phoneNumber, code);
       
-      if (!result.success) {
-        return res.status(401).json(result);
+      if (!isValid) {
+        return res.status(401).json({
+          success: false,
+          error: 'Code OTP invalide ou expiré'
+        });
       }
 
-      res.json(result);
+      // Vérifier si l'utilisateur existe
+      const user = await this.authService.findUserByPhone(phoneNumber);
+      
+      if (user) {
+        return res.json({
+          success: true,
+          verified: true,
+          user: {
+            id: user.id,
+            pseudo: user.pseudo,
+            community: user.community,
+            isAdmin: user.is_admin,
+            avatar: user.avatar_url
+          },
+          isNewUser: false,
+          message: 'Connexion réussie'
+        });
+      }
+
+      res.json({
+        success: true,
+        verified: true,
+        message: 'OTP vérifié avec succès',
+        phoneNumber: phoneNumber,
+        isNewUser: true
+      });
       
     } catch (error: any) {
-      console.error('🔥 Erreur verifyOTP:', error);
-      res.status(500).json({
+      console.error('❌ Erreur verifyOTP:', error);
+      res.status(500).json({ 
         success: false,
-        error: 'Erreur interne du serveur'
+        error: 'Erreur interne du serveur' 
       });
     }
   }
@@ -65,57 +126,85 @@ export class AuthController {
     try {
       const profileData = req.body;
       
-      if (!profileData.phoneNumber || !profileData.nationality || !profileData.pseudo) {
-        return res.status(400).json({
+      console.log('👤 Création profil:', profileData);
+      
+      const requiredFields = ['phoneNumber', 'countryCode', 'nationality', 'nationalityName', 'pseudo', 'email', 'community'];
+      for (const field of requiredFields) {
+        if (!profileData[field]) {
+          return res.status(400).json({
+            success: false,
+            error: `Champ manquant: ${field}`
+          });
+        }
+      }
+
+      // Vérifier si l'utilisateur existe déjà
+      const existingUser = await this.authService.findUserByPhone(profileData.phoneNumber);
+      
+      if (existingUser) {
+        return res.status(409).json({
           success: false,
-          error: 'Données manquantes'
+          error: 'Un utilisateur avec ce numéro existe déjà'
         });
       }
 
-      // Calculer la communauté si manquante
-      if (!profileData.community && profileData.nationalityName && profileData.countryName) {
-        profileData.community = `${profileData.nationalityName}En${profileData.countryName.replace(/\s/g, '')}`;
+      // Formater la communauté
+      function formatCommunityName(nationalityName: string, countryName: string): string {
+        const cleanNationality = nationalityName
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .replace(/\s+/g, '');
+        
+        const cleanCountry = countryName
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .replace(/\s+/g, '');
+        
+        return `${cleanNationality}En${cleanCountry}`;
       }
 
-      const result = await this.authService.completeProfile(profileData);
+      const communityName = formatCommunityName(profileData.nationalityName, profileData.countryName);
       
-      if (!result.success) {
-        return res.status(400).json(result);
-      }
+      const userData = {
+        phone_number: profileData.phoneNumber,
+        country_code: profileData.countryCode,
+        country_name: profileData.countryName,
+        nationality: profileData.nationality,
+        nationality_name: profileData.nationalityName,
+        pseudo: profileData.pseudo,
+        email: profileData.email,
+        avatar_url: profileData.avatar,
+        community: communityName,
+        is_admin: false,
+        is_verified: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
-      res.json(result);
+      const user = await this.authService.createUser(userData);
+      
+      console.log('✅ Utilisateur créé:', user.id);
+
+      // Générer token (simplifié pour l'instant)
+      const token = `belafrica_${user.id}_${Date.now()}`;
+
+      res.json({
+        success: true,
+        token: token,
+        user: {
+          id: user.id,
+          pseudo: user.pseudo,
+          community: user.community,
+          isAdmin: user.is_admin,
+          avatar: user.avatar_url,
+          phoneNumber: user.phone_number
+        },
+        message: 'Profil créé avec succès'
+      });
       
     } catch (error: any) {
-      console.error('🔥 Erreur completeProfile:', error);
+      console.error('❌ Erreur completeProfile:', error);
       res.status(500).json({
         success: false,
         error: error.message || 'Erreur création profil'
-      });
-    }
-  }
-
-  async verifyToken(req: Request, res: Response) {
-    try {
-      const token = req.headers.authorization?.replace('Bearer ', '');
-      
-      if (!token) {
-        return res.status(401).json({
-          valid: false,
-          error: 'Token manquant'
-        });
-      }
-
-      // Simulation - dans la réalité, vérifier avec JWT
-      res.json({
-        valid: true,
-        message: 'Token valide'
-      });
-      
-    } catch (error: any) {
-      console.error('🔥 Erreur verifyToken:', error);
-      res.status(401).json({
-        valid: false,
-        error: 'Token invalide'
       });
     }
   }

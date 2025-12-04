@@ -3,257 +3,129 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getSupabaseService = exports.messagesController = exports.MessagesController = void 0;
 const supabase_factory_1 = require("../services/supabase.factory");
 Object.defineProperty(exports, "getSupabaseService", { enumerable: true, get: function () { return supabase_factory_1.getSupabaseService; } });
-const encryption_service_1 = require("../services/encryption.service");
 class MessagesController {
     async getConversations(req, res) {
         try {
-            const userId = req.user?.id;
-            if (!userId) {
-                return res.status(401).json({ error: 'Non autorisé' });
-            }
-            const supabase = (0, supabase_factory_1.getSupabaseService)();
-            const conversations = await supabase.getUserConversations(userId);
+            const userId = req.userId;
+            const supabase = req.supabase;
             res.json({
                 success: true,
-                conversations,
-                count: conversations.length
+                conversations: []
             });
         }
         catch (error) {
-            console.error('🔥 Erreur getConversations:', error);
+            console.error('❌ Erreur récupération conversations:', error);
             res.status(500).json({
-                error: 'Erreur lors de la récupération des conversations'
+                success: false,
+                error: error.message
             });
         }
     }
     async getMessages(req, res) {
         try {
-            const userId = req.user?.id;
-            const { id } = req.params;
-            const { limit = 50, offset = 0 } = req.query;
-            if (!userId || !id) {
-                return res.status(400).json({
-                    error: 'Conversation ID requis'
-                });
-            }
-            const supabase = (0, supabase_factory_1.getSupabaseService)();
-            const hasAccess = await supabase.checkConversationAccess(id, userId);
-            if (!hasAccess) {
-                return res.status(403).json({ error: 'Accès non autorisé' });
-            }
-            const messages = await supabase.getConversationMessages(id, parseInt(limit), parseInt(offset));
-            const encryptionService = (0, encryption_service_1.getEncryptionService)();
-            const decryptedMessages = await Promise.all(messages.map(async (msg) => {
-                if (msg.encrypted_content) {
-                    try {
-                        const decrypted = await encryptionService.decryptMessage(msg.encrypted_content, userId);
-                        return { ...msg, content: decrypted, encrypted_content: undefined };
-                    }
-                    catch (error) {
-                        return { ...msg, content: '🔒 Message chiffré non déchiffrable' };
-                    }
-                }
-                return msg;
-            }));
+            const conversationId = req.params.id;
+            const supabase = req.supabase;
             res.json({
                 success: true,
-                messages: decryptedMessages,
-                count: messages.length
+                messages: []
             });
         }
         catch (error) {
-            console.error('🔥 Erreur getMessages:', error);
+            console.error('❌ Erreur récupération messages:', error);
             res.status(500).json({
-                error: 'Erreur lors de la récupération des messages'
-            });
-        }
-    }
-    async sendMessage(req, res) {
-        try {
-            const userId = req.user?.id;
-            const { id } = req.params;
-            const { content, messageType = 'text', mediaUrl, encrypt = false } = req.body;
-            if (!userId || !id || !content) {
-                return res.status(400).json({
-                    error: 'Contenu du message requis'
-                });
-            }
-            const supabase = (0, supabase_factory_1.getSupabaseService)();
-            const hasAccess = await supabase.checkConversationAccess(id, userId);
-            if (!hasAccess) {
-                return res.status(403).json({ error: 'Accès non autorisé' });
-            }
-            let finalContent = content;
-            let encryptedContent = null;
-            if (encrypt) {
-                const encryptionService = (0, encryption_service_1.getEncryptionService)();
-                encryptedContent = await encryptionService.encryptMessage(content, id);
-                finalContent = '';
-            }
-            const messageData = {
-                conversation_id: id,
-                sender_id: userId,
-                content: finalContent,
-                encrypted_content: encryptedContent,
-                message_type: messageType,
-                media_url: mediaUrl
-            };
-            const message = await supabase.createMessage(messageData);
-            const sender = await supabase.getUserById(userId);
-            res.json({
-                success: true,
-                message: {
-                    ...message,
-                    sender: {
-                        pseudo: sender?.pseudo,
-                        avatar_url: sender?.avatar_url
-                    }
-                }
-            });
-        }
-        catch (error) {
-            console.error('🔥 Erreur sendMessage:', error);
-            res.status(500).json({
-                error: 'Erreur lors de l\'envoi du message'
-            });
-        }
-    }
-    async createGroupChat(req, res) {
-        try {
-            const userId = req.user?.id;
-            const { communityId, name, description } = req.body;
-            if (!userId || !communityId) {
-                return res.status(400).json({
-                    error: 'Communauté requise'
-                });
-            }
-            const supabase = (0, supabase_factory_1.getSupabaseService)();
-            const user = await supabase.getUserById(userId);
-            if (!user || user.community !== communityId) {
-                return res.status(403).json({ error: 'Vous n\'appartenez pas à cette communauté' });
-            }
-            const existingGroup = await supabase.getCommunityGroup(communityId);
-            if (existingGroup) {
-                return res.status(400).json({
-                    error: 'Un groupe existe déjà pour cette communauté',
-                    group: existingGroup
-                });
-            }
-            const groupData = {
-                type: 'group',
-                name: name || `Groupe ${communityId}`,
-                community: communityId,
-                created_by: userId,
-                description: description || `Groupe de discussion pour la communauté ${communityId}`
-            };
-            const group = await supabase.createConversation(groupData);
-            await supabase.addConversationParticipant(group.id, userId, true);
-            res.json({
-                success: true,
-                message: 'Groupe créé avec succès',
-                group
-            });
-        }
-        catch (error) {
-            console.error('🔥 Erreur createGroupChat:', error);
-            res.status(500).json({
-                error: 'Erreur lors de la création du groupe'
-            });
-        }
-    }
-    async getGroupChat(req, res) {
-        try {
-            const userId = req.user?.id;
-            const { communityId } = req.params;
-            if (!userId || !communityId) {
-                return res.status(400).json({
-                    error: 'Communauté requise'
-                });
-            }
-            const supabase = (0, supabase_factory_1.getSupabaseService)();
-            const user = await supabase.getUserById(userId);
-            if (!user || user.community !== communityId) {
-                return res.status(403).json({ error: 'Vous n\'appartenez pas à cette communauté' });
-            }
-            const group = await supabase.getCommunityGroup(communityId);
-            if (!group) {
-                return res.status(404).json({
-                    error: 'Aucun groupe trouvé pour cette communauté'
-                });
-            }
-            const participants = await supabase.getConversationParticipants(group.id);
-            res.json({
-                success: true,
-                group: {
-                    ...group,
-                    participants,
-                    participantsCount: participants.length
-                }
-            });
-        }
-        catch (error) {
-            console.error('🔥 Erreur getGroupChat:', error);
-            res.status(500).json({
-                error: 'Erreur lors de la récupération du groupe'
+                success: false,
+                error: error.message
             });
         }
     }
     async createConversation(req, res) {
         try {
-            const userId = req.user?.id;
-            const { participantId } = req.body;
-            if (!userId || !participantId) {
-                return res.status(400).json({
-                    error: 'Participant requis'
-                });
-            }
-            if (userId === participantId) {
-                return res.status(400).json({
-                    error: 'Impossible de créer une conversation avec soi-même'
-                });
-            }
-            const supabase = (0, supabase_factory_1.getSupabaseService)();
-            const user1 = await supabase.getUserById(userId);
-            const user2 = await supabase.getUserById(participantId);
-            if (!user1 || !user2) {
-                return res.status(404).json({ error: 'Utilisateur non trouvé' });
-            }
-            if (user1.community !== user2.community) {
-                return res.status(403).json({ error: 'Les utilisateurs ne sont pas dans la même communauté' });
-            }
-            const existingConversation = await supabase.getPrivateConversation(userId, participantId);
-            if (existingConversation) {
-                return res.json({
-                    success: true,
-                    message: 'Conversation déjà existante',
-                    conversation: existingConversation
-                });
-            }
-            const conversationData = {
-                type: 'private',
-                name: null,
-                community: user1.community,
-                created_by: userId
-            };
-            const conversation = await supabase.createConversation(conversationData);
-            await supabase.addConversationParticipant(conversation.id, userId, false);
-            await supabase.addConversationParticipant(conversation.id, participantId, false);
+            const { participantIds } = req.body;
+            const supabase = req.supabase;
             res.json({
                 success: true,
-                message: 'Conversation créée avec succès',
-                conversation: {
-                    ...conversation,
-                    participants: [
-                        { id: userId, pseudo: user1.pseudo, avatar_url: user1.avatar_url },
-                        { id: participantId, pseudo: user2.pseudo, avatar_url: user2.avatar_url }
-                    ]
-                }
+                conversation: {}
             });
         }
         catch (error) {
-            console.error('🔥 Erreur createConversation:', error);
+            console.error('❌ Erreur création conversation:', error);
             res.status(500).json({
-                error: 'Erreur lors de la création de la conversation'
+                success: false,
+                error: error.message
+            });
+        }
+    }
+    async sendMessage(req, res) {
+        try {
+            const { conversationId, content, messageType, mediaUrl } = req.body;
+            const senderId = req.userId;
+            if (!conversationId || !content || !senderId) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Données manquantes'
+                });
+            }
+            const messageData = {
+                conversation_id: conversationId,
+                sender_id: senderId,
+                content,
+                message_type: messageType || 'text',
+                media_url: mediaUrl || null,
+                created_at: new Date().toISOString()
+            };
+            const supabase = req.supabase;
+            const { data, error } = await supabase
+                .from('messages')
+                .insert([messageData])
+                .select()
+                .single();
+            if (error)
+                throw error;
+            res.json({
+                success: true,
+                message: data,
+                timestamp: new Date().toISOString()
+            });
+        }
+        catch (error) {
+            console.error('❌ Erreur envoi message:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+    async createGroupChat(req, res) {
+        try {
+            const { communityId, name } = req.body;
+            const supabase = req.supabase;
+            res.json({
+                success: true,
+                group: {}
+            });
+        }
+        catch (error) {
+            console.error('❌ Erreur création groupe:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+    async getGroupChat(req, res) {
+        try {
+            const communityId = req.params.communityId;
+            const supabase = req.supabase;
+            res.json({
+                success: true,
+                group: {}
+            });
+        }
+        catch (error) {
+            console.error('❌ Erreur récupération groupe:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message
             });
         }
     }

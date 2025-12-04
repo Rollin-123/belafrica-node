@@ -1,70 +1,118 @@
 import { Request, Response } from 'express';
-import { AdminService } from '../services/admin.service';
+import { AdminService } from '../services/admin.service'; 
 
 export class AdminController {
-  private adminService = new AdminService();
+  private adminService: AdminService;
 
-  async generateAdminCode(req: Request, res: Response) {
+  constructor() {
+    this.adminService = new AdminService();
+  }
+
+  async generateCode(req: Request, res: Response) {
     try {
-      const { community, permissions, expiresInHours } = req.body;
-      const userId = (req as any).user?.id; // From auth middleware
+      const { community, permissions } = req.body;
       
-      if (!community || !permissions) {
+      if (!community) {
         return res.status(400).json({
           success: false,
-          error: 'Communauté et permissions requises'
+          error: 'Communauté requise'
         });
       }
 
-      const result = await this.adminService.generateAdminCode(community, permissions, expiresInHours, userId);
-      res.json(result);
+      const result = await this.adminService.generateAdminCode(community, permissions);
       
+      if (result.success) {
+        res.json({
+          success: true,
+          code: result.code,
+          message: 'Code admin généré'
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
     } catch (error: any) {
-      console.error('🔥 Erreur generateAdminCode:', error);
+      console.error('❌ Erreur génération code admin:', error);
       res.status(500).json({
         success: false,
-        error: 'Erreur interne du serveur'
+        error: 'Erreur interne'
       });
     }
   }
 
-  async validateAdminCode(req: Request, res: Response) {
+  async validateCode(req: Request, res: Response) {
     try {
-      const { code } = req.body;
-      const userId = (req as any).user?.id;
+      const { code, userId } = req.body;
       
-      if (!code) {
+      if (!code || !userId) {
         return res.status(400).json({
           success: false,
-          error: 'Code requis'
+          error: 'Code et userId requis'
         });
       }
 
       const result = await this.adminService.validateAdminCode(code, userId);
-      res.json(result);
       
+      if (result.success) {
+        res.json({
+          success: true,
+          valid: true,
+          permissions: result.permissions,
+          message: 'Code admin validé'
+        });
+      } else {
+        res.status(401).json({
+          success: false,
+          error: result.error
+        });
+      }
     } catch (error: any) {
-      console.error('🔥 Erreur validateAdminCode:', error);
+      console.error('❌ Erreur validation code admin:', error);
       res.status(500).json({
         success: false,
-        error: 'Erreur interne du serveur'
+        error: 'Erreur interne'
       });
     }
   }
 
-  async getAdminRequests(req: Request, res: Response) {
+   async getAdminRequests(req: Request, res: Response) {
     try {
-      const requests = await this.adminService.getAdminRequests();
+      const supabase = (req as any).supabase;
+      const userId = (req as any).userId;
+
+      // Vérifier que l'utilisateur est admin
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', userId)
+        .single();
+
+      if (userError || !user?.is_admin) {
+        return res.status(403).json({
+          success: false,
+          error: 'Permissions insuffisantes'
+        });
+      }
+
+      const { data: requests, error } = await supabase
+        .from('admin_requests')
+        .select('*')
+        .eq('status', 'pending')
+        .order('submitted_at', { ascending: true });
+
+      if (error) throw error;
+
       res.json({
         success: true,
-        requests
+        requests: requests || []
       });
-      
     } catch (error: any) {
-      console.error('🔥 Erreur getAdminRequests:', error);
+      console.error('❌ Erreur récupération demandes admin:', error);
       res.status(500).json({
         success: false,
-        error: 'Erreur interne du serveur'
+        error: error.message
       });
     }
   }
@@ -73,27 +121,34 @@ export class AdminController {
     try {
       const { id } = req.params;
       const { status } = req.body;
-      
-      if (!id || !status) {
+      const supabase = (req as any).supabase;
+
+      if (!['approved', 'rejected'].includes(status)) {
         return res.status(400).json({
           success: false,
-          error: 'ID et status requis'
+          error: 'Statut invalide'
         });
       }
 
-      const result = await this.adminService.updateRequestStatus(id, status);
-      
-      if (!result.success) {
-        return res.status(400).json(result);
-      }
+      const { error } = await supabase
+        .from('admin_requests')
+        .update({
+          status,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', id);
 
-      res.json(result);
-      
+      if (error) throw error;
+
+      res.json({
+        success: true,
+        message: `Demande ${status === 'approved' ? 'approuvée' : 'rejetée'}`
+      });
     } catch (error: any) {
-      console.error('🔥 Erreur updateRequestStatus:', error);
+      console.error('❌ Erreur mise à jour demande:', error);
       res.status(500).json({
         success: false,
-        error: 'Erreur interne du serveur'
+        error: error.message
       });
     }
   }
