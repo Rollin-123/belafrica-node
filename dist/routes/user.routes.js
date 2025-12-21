@@ -9,10 +9,10 @@ const auth_middleware_1 = require("../middleware/auth.middleware");
 const router = (0, express_1.Router)();
 const userController = new user_controller_1.UserController();
 // Routes utilisateur
-router.get('/profile', auth_middleware_1.authMiddleware, userController.getProfile);
-router.put('/profile', auth_middleware_1.authMiddleware, userController.updateProfile);
-router.put('/profile/avatar', auth_middleware_1.authMiddleware, userController.updateAvatar);
-router.get('/community', auth_middleware_1.authMiddleware, userController.getCommunityUsers);
-router.get('/:id', auth_middleware_1.authMiddleware, userController.getUserById);
+router.get('/profile', auth_middleware_1.protect, userController.getProfile);
+router.put('/profile', auth_middleware_1.protect, userController.updateProfile);
+router.put('/profile/avatar', auth_middleware_1.protect, userController.updateAvatar);
+router.get('/community', auth_middleware_1.protect, userController.getCommunityUsers);
+router.get('/:id', auth_middleware_1.protect, userController.getUserById);
 exports.default = router;
 //# sourceMappingURL=user.routes.js.map

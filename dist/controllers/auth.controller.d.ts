@@ -1,9 +1,5 @@
 import { Request, Response } from 'express';
-export declare class AuthController {
-    private authService;
-    constructor();
-    requestOTP(req: Request, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
-    verifyOTP(req: Request, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
-    completeProfile(req: Request, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
-}
+export declare const requestOtp: (req: Request, res: Response) => Promise<Response<any, Record<string, any>> | undefined>;
+export declare const verifyOtp: (req: Request, res: Response) => Promise<Response<any, Record<string, any>> | undefined>;
+export declare const completeProfile: (req: Request, res: Response) => Promise<Response<any, Record<string, any>> | undefined>;
 //# sourceMappingURL=auth.controller.d.ts.map

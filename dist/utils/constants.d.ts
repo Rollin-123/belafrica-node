@@ -8,15 +8,66 @@ export declare const APP_CONSTANTS: {
     MAX_POST_LENGTH: number;
     MAX_IMAGE_SIZE_MB: number;
     MAX_FILE_SIZE_MB: number;
-    ALLOWED_COUNTRIES: {
-        code: string;
-        name: string;
-        countryCode: string;
-    }[];
+    GEO_VALIDATION_ENABLED: boolean;
+    GEO_BYPASS_IN_DEV: boolean;
+    PHONE_COUNTRY_MAPPING: {
+        '+33': string[];
+        '+32': string[];
+        '+49': string[];
+        '+39': string[];
+        '+34': string[];
+        '+41': string[];
+        '+44': string[];
+        '+1': string[];
+        '+7': string[];
+        '+375': string[];
+    };
+    COUNTRY_NAMES: {
+        '+33': string;
+        '+32': string;
+        '+49': string;
+        '+39': string;
+        '+34': string;
+        '+41': string;
+        '+44': string;
+        '+1': string;
+        '+7': string;
+        '+375': string;
+    };
     AFRICAN_COUNTRIES: {
         code: string;
         name: string;
         flag: string;
     }[];
 };
+export declare const GEO_VALIDATION_ENABLED: boolean;
+export declare const countryMapping: {
+    '+33': string[];
+    '+32': string[];
+    '+49': string[];
+    '+39': string[];
+    '+34': string[];
+    '+41': string[];
+    '+44': string[];
+    '+1': string[];
+    '+7': string[];
+    '+375': string[];
+};
+export declare const countryNames: {
+    '+33': string;
+    '+32': string;
+    '+49': string;
+    '+39': string;
+    '+34': string;
+    '+41': string;
+    '+44': string;
+    '+1': string;
+    '+7': string;
+    '+375': string;
+};
+export declare const africanCountries: {
+    code: string;
+    name: string;
+    flag: string;
+}[];
 //# sourceMappingURL=constants.d.ts.map

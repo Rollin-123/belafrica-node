@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.APP_CONSTANTS = void 0;
+exports.africanCountries = exports.countryNames = exports.countryMapping = exports.GEO_VALIDATION_ENABLED = exports.APP_CONSTANTS = void 0;
 // src/utils/constants.ts
 exports.APP_CONSTANTS = {
     APP_NAME: 'BELAFRICA',
@@ -14,19 +14,39 @@ exports.APP_CONSTANTS = {
     MAX_POST_LENGTH: 1000,
     MAX_IMAGE_SIZE_MB: 5,
     MAX_FILE_SIZE_MB: 10,
-    // Pays autorisés
-    ALLOWED_COUNTRIES: [
-        { code: '+33', name: 'France', countryCode: 'FR' },
-        { code: '+32', name: 'Belgique', countryCode: 'BE' },
-        { code: '+49', name: 'Allemagne', countryCode: 'DE' },
-        { code: '+39', name: 'Italie', countryCode: 'IT' },
-        { code: '+34', name: 'Espagne', countryCode: 'ES' },
-        { code: '+41', name: 'Suisse', countryCode: 'CH' },
-        { code: '+44', name: 'Royaume-Uni', countryCode: 'GB' },
-        { code: '+1', name: 'Canada', countryCode: 'CA' },
-        { code: '+7', name: 'Russie', countryCode: 'RU' },
-        { code: '+375', name: 'Biélorussie', countryCode: 'BY' }
-    ],
+    // Configuration géolocalisation
+    GEO_VALIDATION_ENABLED: process.env.GEO_VALIDATION_ENABLED
+        ? process.env.GEO_VALIDATION_ENABLED === 'true'
+        : true,
+    GEO_BYPASS_IN_DEV: process.env.GEO_BYPASS_IN_DEV
+        ? process.env.GEO_BYPASS_IN_DEV === 'true'
+        : true,
+    // Pays autorisés (code téléphone -> codes ISO)
+    PHONE_COUNTRY_MAPPING: {
+        '+33': ['FR'], // France
+        '+32': ['BE'], // Belgique
+        '+49': ['DE'], // Allemagne
+        '+39': ['IT'], // Italie
+        '+34': ['ES'], // Espagne
+        '+41': ['CH'], // Suisse
+        '+44': ['GB', 'UK'], // Royaume-Uni
+        '+1': ['CA', 'US'], // Canada ou USA
+        '+7': ['RU', 'KZ'], // Russie ou Kazakhstan
+        '+375': ['BY'] // Biélorussie
+    },
+    // Noms des pays pour affichage
+    COUNTRY_NAMES: {
+        '+33': 'France',
+        '+32': 'Belgique',
+        '+49': 'Allemagne',
+        '+39': 'Italie',
+        '+34': 'Espagne',
+        '+41': 'Suisse',
+        '+44': 'Royaume-Uni',
+        '+1': 'Canada/USA',
+        '+7': 'Russie/Kazakhstan',
+        '+375': 'Biélorussie'
+    },
     // Nationalités africaines
     AFRICAN_COUNTRIES: [
         { code: 'DZ', name: 'Algérie', flag: '🇩🇿' },
@@ -85,4 +105,9 @@ exports.APP_CONSTANTS = {
         { code: 'ZW', name: 'Zimbabwe', flag: '🇿🇼' }
     ]
 };
+// Export pour compatibilité
+exports.GEO_VALIDATION_ENABLED = exports.APP_CONSTANTS.GEO_VALIDATION_ENABLED;
+exports.countryMapping = exports.APP_CONSTANTS.PHONE_COUNTRY_MAPPING;
+exports.countryNames = exports.APP_CONSTANTS.COUNTRY_NAMES;
+exports.africanCountries = exports.APP_CONSTANTS.AFRICAN_COUNTRIES;
 //# sourceMappingURL=constants.js.map

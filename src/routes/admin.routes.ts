@@ -1,34 +1,14 @@
+// src/routes/admin.routes.ts
 import { Router } from 'express';
-import { AdminController } from '../controllers/admin.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import { adminMiddleware } from '../middleware/admin.middleware';
+import { generateAdminCode, validateAdminCode } from '../controllers/admin.controller';
+import { protect, isAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
-const adminController = new AdminController();
 
-router.post('/generate-code', authMiddleware, adminMiddleware, (req, res) => {
-  adminController.generateCode(req, res); 
-});
+// Seuls les admins peuvent générer des codes pour d'autres admins
+router.post('/generate-code', protect, isAdmin, generateAdminCode);
 
-router.post('/validate-code', authMiddleware, (req, res) => {
-  adminController.validateCode(req, res);  
-});
-
-router.get('/requests', authMiddleware, adminMiddleware, (req, res) => {
-  res.json({ 
-    success: true, 
-    message: 'Fonctionnalité à venir',
-    requests: []
-  });
-});
-
-router.put('/requests/:id', authMiddleware, adminMiddleware, (req, res) => {
-  res.json({ 
-    success: true, 
-    message: 'Fonctionnalité à venir',
-    requestId: req.params.id,
-    status: 'updated'
-  });
-});
+// Un utilisateur connecté peut essayer de valider un code pour devenir admin
+router.post('/validate-code', protect, validateAdminCode);
 
 export default router;

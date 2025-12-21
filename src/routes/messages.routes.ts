@@ -1,15 +1,15 @@
 import { Router } from 'express';
 import { MessagesController } from '../controllers/messages.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { protect } from '../middleware/auth.middleware';
 
 const router = Router();
 const messagesController = new MessagesController();
 
-router.post('/send', authMiddleware, (req, res) => {
+router.post('/send', protect, (req, res) => {
   messagesController.sendMessage(req, res);
 });
 
-router.get('/conversations', authMiddleware, (req, res) => {
+router.get('/conversations', protect, (req, res) => {
   res.json({
     success: true,
     message: 'Fonctionnalité à venir',
@@ -17,7 +17,7 @@ router.get('/conversations', authMiddleware, (req, res) => {
   });
 });
 
-router.get('/conversations/:id/messages', authMiddleware, (req, res) => {
+router.get('/conversations/:id/messages', protect, (req, res) => {
   res.json({
     success: true,
     message: 'Fonctionnalité à venir',
@@ -26,21 +26,21 @@ router.get('/conversations/:id/messages', authMiddleware, (req, res) => {
   });
 });
 
-router.post('/conversations', authMiddleware, (req, res) => {
+router.post('/conversations', protect, (req, res) => {
   res.json({
     success: true,
     message: 'Fonctionnalité à venir'
   });
 });
 
-router.post('/group/create', authMiddleware, (req, res) => {
+router.post('/group/create', protect, (req, res) => {
   res.json({
     success: true,
     message: 'Fonctionnalité à venir'
   });
 });
 
-router.get('/group/:communityId', authMiddleware, (req, res) => {
+router.get('/group/:communityId', protect, (req, res) => {
   res.json({
     success: true,
     message: 'Fonctionnalité à venir',

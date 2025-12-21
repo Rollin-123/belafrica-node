@@ -1,145 +1,72 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AdminController = void 0;
-const admin_service_1 = require("../services/admin.service");
-class AdminController {
-    constructor() {
-        this.adminService = new admin_service_1.AdminService();
+exports.validateAdminCode = exports.generateAdminCode = void 0;
+const supabase_1 = require("../utils/supabase");
+const crypto_1 = require("crypto");
+/**
+ * Génère un code d'administration.
+ * Réservé aux super-administrateurs (logique de super-admin à définir, pour l'instant on se base sur is_admin).
+ */
+const generateAdminCode = async (req, res) => {
+    try {
+        const { community, permissions, expiresInHours } = req.body;
+        const code = (0, crypto_1.randomBytes)(16).toString('hex');
+        const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
+        const { data, error } = await supabase_1.supabase
+            .from('admin_codes')
+            .insert({
+            code,
+            community,
+            permissions,
+            expires_at: expiresAt.toISOString(),
+            created_by: req.user?.userId,
+        })
+            .select()
+            .single();
+        if (error)
+            throw error;
+        res.status(201).json({ success: true, data });
     }
-    async generateCode(req, res) {
-        try {
-            const { community, permissions } = req.body;
-            if (!community) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Communauté requise'
-                });
-            }
-            const result = await this.adminService.generateAdminCode(community, permissions);
-            if (result.success) {
-                res.json({
-                    success: true,
-                    code: result.code,
-                    message: 'Code admin généré'
-                });
-            }
-            else {
-                res.status(400).json({
-                    success: false,
-                    error: result.error
-                });
-            }
-        }
-        catch (error) {
-            console.error('❌ Erreur génération code admin:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Erreur interne'
-            });
-        }
+    catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
-    async validateCode(req, res) {
-        try {
-            const { code, userId } = req.body;
-            if (!code || !userId) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Code et userId requis'
-                });
-            }
-            const result = await this.adminService.validateAdminCode(code, userId);
-            if (result.success) {
-                res.json({
-                    success: true,
-                    valid: true,
-                    permissions: result.permissions,
-                    message: 'Code admin validé'
-                });
-            }
-            else {
-                res.status(401).json({
-                    success: false,
-                    error: result.error
-                });
-            }
+};
+exports.generateAdminCode = generateAdminCode;
+/**
+ * Valide un code et promeut un utilisateur au rang d'administrateur.
+ * Accessible par un utilisateur connecté.
+ */
+const validateAdminCode = async (req, res) => {
+    try {
+        const { code } = req.body;
+        const userId = req.user?.userId;
+        const { data: codeData, error: codeError } = await supabase_1.supabase
+            .from('admin_codes')
+            .select('*')
+            .eq('code', code)
+            .eq('used', false)
+            .gt('expires_at', new Date().toISOString())
+            .single();
+        if (codeError || !codeData) {
+            return res.status(404).json({ success: false, error: 'Code invalide, expiré ou déjà utilisé.' });
         }
-        catch (error) {
-            console.error('❌ Erreur validation code admin:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Erreur interne'
-            });
-        }
+        // Mettre à jour l'utilisateur
+        const { error: userUpdateError } = await supabase_1.supabase
+            .from('users')
+            .update({
+            is_admin: true,
+            admin_permissions: codeData.permissions,
+        })
+            .eq('id', userId);
+        if (userUpdateError)
+            throw userUpdateError;
+        // Marquer le code comme utilisé
+        await supabase_1.supabase.from('admin_codes').update({ used: true, used_by: userId, used_at: new Date().toISOString() }).eq('id', codeData.id);
+        res.json({ success: true, message: 'Félicitations, vous êtes maintenant administrateur !' });
     }
-    async getAdminRequests(req, res) {
-        try {
-            const supabase = req.supabase;
-            const userId = req.userId;
-            // Vérifier que l'utilisateur est admin
-            const { data: user, error: userError } = await supabase
-                .from('users')
-                .select('is_admin')
-                .eq('id', userId)
-                .single();
-            if (userError || !user?.is_admin) {
-                return res.status(403).json({
-                    success: false,
-                    error: 'Permissions insuffisantes'
-                });
-            }
-            const { data: requests, error } = await supabase
-                .from('admin_requests')
-                .select('*')
-                .eq('status', 'pending')
-                .order('submitted_at', { ascending: true });
-            if (error)
-                throw error;
-            res.json({
-                success: true,
-                requests: requests || []
-            });
-        }
-        catch (error) {
-            console.error('❌ Erreur récupération demandes admin:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message
-            });
-        }
+    catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
-    async updateRequestStatus(req, res) {
-        try {
-            const { id } = req.params;
-            const { status } = req.body;
-            const supabase = req.supabase;
-            if (!['approved', 'rejected'].includes(status)) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Statut invalide'
-                });
-            }
-            const { error } = await supabase
-                .from('admin_requests')
-                .update({
-                status,
-                reviewed_at: new Date().toISOString()
-            })
-                .eq('id', id);
-            if (error)
-                throw error;
-            res.json({
-                success: true,
-                message: `Demande ${status === 'approved' ? 'approuvée' : 'rejetée'}`
-            });
-        }
-        catch (error) {
-            console.error('❌ Erreur mise à jour demande:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message
-            });
-        }
-    }
-}
-exports.AdminController = AdminController;
+};
+exports.validateAdminCode = validateAdminCode;
 //# sourceMappingURL=admin.controller.js.map

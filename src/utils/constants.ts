@@ -13,20 +13,42 @@ export const APP_CONSTANTS = {
   MAX_POST_LENGTH: 1000,
   MAX_IMAGE_SIZE_MB: 5,
   MAX_FILE_SIZE_MB: 10,
+
+  // Configuration géolocalisation
+  GEO_VALIDATION_ENABLED: process.env.GEO_VALIDATION_ENABLED 
+    ? process.env.GEO_VALIDATION_ENABLED === 'true' 
+    : true,
+  GEO_BYPASS_IN_DEV: process.env.GEO_BYPASS_IN_DEV 
+    ? process.env.GEO_BYPASS_IN_DEV === 'true' 
+    : true,
   
-  // Pays autorisés
-  ALLOWED_COUNTRIES: [
-    { code: '+33', name: 'France', countryCode: 'FR' },
-    { code: '+32', name: 'Belgique', countryCode: 'BE' },
-    { code: '+49', name: 'Allemagne', countryCode: 'DE' },
-    { code: '+39', name: 'Italie', countryCode: 'IT' },
-    { code: '+34', name: 'Espagne', countryCode: 'ES' },
-    { code: '+41', name: 'Suisse', countryCode: 'CH' },
-    { code: '+44', name: 'Royaume-Uni', countryCode: 'GB' },
-    { code: '+1', name: 'Canada', countryCode: 'CA' },
-    { code: '+7', name: 'Russie', countryCode: 'RU' },
-    { code: '+375', name: 'Biélorussie', countryCode: 'BY' }
-  ],
+  // Pays autorisés (code téléphone -> codes ISO)
+  PHONE_COUNTRY_MAPPING: {
+    '+33': ['FR'],        // France
+    '+32': ['BE'],        // Belgique
+    '+49': ['DE'],        // Allemagne
+    '+39': ['IT'],        // Italie
+    '+34': ['ES'],        // Espagne
+    '+41': ['CH'],        // Suisse
+    '+44': ['GB', 'UK'],  // Royaume-Uni
+    '+1': ['CA', 'US'],   // Canada ou USA
+    '+7': ['RU', 'KZ'],   // Russie ou Kazakhstan
+    '+375': ['BY']        // Biélorussie
+  },
+  
+  // Noms des pays pour affichage
+  COUNTRY_NAMES: {
+    '+33': 'France',
+    '+32': 'Belgique',
+    '+49': 'Allemagne',
+    '+39': 'Italie',
+    '+34': 'Espagne',
+    '+41': 'Suisse',
+    '+44': 'Royaume-Uni',
+    '+1': 'Canada/USA',
+    '+7': 'Russie/Kazakhstan',
+    '+375': 'Biélorussie'
+  },
   
   // Nationalités africaines
   AFRICAN_COUNTRIES: [
@@ -86,3 +108,8 @@ export const APP_CONSTANTS = {
     { code: 'ZW', name: 'Zimbabwe', flag: '🇿🇼' }
   ]
 };
+// Export pour compatibilité
+export const GEO_VALIDATION_ENABLED = APP_CONSTANTS.GEO_VALIDATION_ENABLED;
+export const countryMapping = APP_CONSTANTS.PHONE_COUNTRY_MAPPING;
+export const countryNames = APP_CONSTANTS.COUNTRY_NAMES;
+export const africanCountries = APP_CONSTANTS.AFRICAN_COUNTRIES;
