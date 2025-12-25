@@ -2,22 +2,21 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deletePost = exports.getPosts = exports.createPost = void 0;
 const supabase_1 = require("../utils/supabase");
-// ✅ RÈGLE : Seuls les administrateurs peuvent créer un post.
 const createPost = async (req, res) => {
+    // @ts-ignore
+    const userId = req.user?.userId;
+    const { content, visibility, image_url } = req.body;
+    if (!content || !visibility) {
+        return res.status(400).json({ success: false, error: 'Le contenu et la visibilité sont requis.' });
+    }
     try {
-        const { content, visibility } = req.body;
-        const authorId = req.user?.userId;
-        // Définir la date d'expiration selon la documentation
-        const expirationHours = visibility === 'national' ? 48 : 72;
-        const expiresAt = new Date(Date.now() + expirationHours * 60 * 60 * 1000);
         const { data, error } = await supabase_1.supabase
             .from('posts')
             .insert({
+            user_id: userId,
             content,
             visibility,
-            expires_at: expiresAt.toISOString(),
-            author_id: authorId,
-            community: req.user?.community,
+            image_url
         })
             .select()
             .single();
@@ -30,42 +29,30 @@ const createPost = async (req, res) => {
     }
 };
 exports.createPost = createPost;
-// Tout utilisateur connecté peut lire les posts
 const getPosts = async (req, res) => {
     try {
-        // ✅ FILTRAGE : On ne récupère que les posts non expirés.
         const { data, error } = await supabase_1.supabase
             .from('posts')
-            .select(`
-      *,
-      author:users ( pseudo, avatar_url )
-    `).gt('expires_at', new Date().toISOString());
+            .select('*, user:users(pseudo, avatar_url)')
+            .order('created_at', { ascending: false });
         if (error)
             throw error;
-        res.json({ success: true, data });
+        res.status(200).json({ success: true, data });
     }
     catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 };
 exports.getPosts = getPosts;
-// ✅ RÈGLE : Seul un administrateur peut supprimer un post.
 const deletePost = async (req, res) => {
+    // @ts-ignore
+    const userId = req.user?.userId;
+    const { id } = req.params;
     try {
-        const { id } = req.params;
-        // Vérifier que le post existe avant de le supprimer.
-        const { data: post, error: fetchError } = await supabase_1.supabase
-            .from('posts')
-            .select('id')
-            .eq('id', id)
-            .single();
-        if (fetchError || !post) {
-            return res.status(404).json({ success: false, error: 'Post non trouvé' });
-        }
-        const { error } = await supabase_1.supabase.from('posts').delete().eq('id', id);
+        const { error } = await supabase_1.supabase.from('posts').delete().match({ id: id, user_id: userId });
         if (error)
             throw error;
-        res.json({ success: true, message: 'Post supprimé' });
+        res.status(200).json({ success: true, message: 'Publication supprimée.' });
     }
     catch (error) {
         res.status(500).json({ success: false, error: error.message });

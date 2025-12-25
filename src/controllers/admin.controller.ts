@@ -1,17 +1,35 @@
 // src/controllers/admin.controller.ts
 import { Request, Response } from 'express';
 import { supabase } from '../utils/supabase';
-import { randomBytes } from 'crypto';
+
+// ✅ Utiliser une méthode de génération de code plus simple et lisible
+const generateShortCode = (length = 6): string => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < length; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
 
 /**
  * Génère un code d'administration.
- * Réservé aux super-administrateurs (logique de super-admin à définir, pour l'instant on se base sur is_admin).
  */
 export const generateAdminCode = async (req: Request, res: Response) => {
   try {
-    const { community, permissions, expiresInHours } = req.body;
+    // ✅ Aligner les paramètres avec le frontend
+    const {
+      community,
+      userEmail,
+      permissions,
+      expiresInHours
+    } = req.body;
 
-    const code = randomBytes(16).toString('hex');
+    if (!community || !userEmail || !permissions || !expiresInHours) {
+      return res.status(400).json({ success: false, error: 'Paramètres manquants: community, userEmail, permissions, expiresInHours sont requis.' });
+    }
+
+    const code = generateShortCode();
     const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
 
     const { data, error } = await supabase
@@ -19,8 +37,10 @@ export const generateAdminCode = async (req: Request, res: Response) => {
       .insert({
         code,
         community,
+        user_email: userEmail, // ✅ Ajouter l'email
         permissions,
         expires_at: expiresAt.toISOString(),
+        // @ts-ignore
         created_by: req.user?.userId,
       })
       .select()
@@ -28,26 +48,41 @@ export const generateAdminCode = async (req: Request, res: Response) => {
 
     if (error) throw error;
 
-    res.status(201).json({ success: true, data });
+    // TODO: Intégrer un service d'envoi d'email ici pour envoyer le code à `userEmail`.
+
+    res.status(201).json({ success: true, code: data.code, message: `Code généré pour ${userEmail}.` });
   } catch (error: any) {
+    console.error("Erreur lors de la génération du code admin:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
-
 /**
  * Valide un code et promeut un utilisateur au rang d'administrateur.
- * Accessible par un utilisateur connecté.
  */
 export const validateAdminCode = async (req: Request, res: Response) => {
   try {
     const { code } = req.body;
+    // @ts-ignore
     const userId = req.user?.userId;
+
+    if (!userId) {
+      // Cette vérification est redondante si `isAuthenticated` est utilisé, mais c'est une bonne pratique.
+      return res.status(401).json({ success: false, error: 'Utilisateur non authentifié.' });
+    }
+
+    // ✅ Récupérer l'utilisateur et son code
+    const { data: user, error: userError } = await supabase.from('users').select('community, email').eq('id', userId).single();
+    if (userError || !user) {
+      return res.status(404).json({ success: false, error: 'Utilisateur non trouvé.' });
+    }
 
     const { data: codeData, error: codeError } = await supabase
       .from('admin_codes')
       .select('*')
       .eq('code', code)
       .eq('used', false)
+      // ✅ On peut aussi vérifier que l'email correspond si c'est une règle métier
+      // .eq('user_email', user.email) 
       .gt('expires_at', new Date().toISOString())
       .single();
 
@@ -55,7 +90,14 @@ export const validateAdminCode = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Code invalide, expiré ou déjà utilisé.' });
     }
 
-    // Mettre à jour l'utilisateur
+    // ✅ Vérifier la correspondance de la communauté pour les admins nationaux
+    if (codeData.permissions.includes('post_national') && !codeData.permissions.includes('post_international')) {
+      if (codeData.community !== user.community) {
+        return res.status(403).json({ success: false, error: `Ce code est pour la communauté ${codeData.community}, mais vous appartenez à ${user.community}.` });
+      }
+    }
+
+    // ✅ Mettre à jour l'utilisateur
     const { error: userUpdateError } = await supabase
       .from('users')
       .update({
@@ -66,11 +108,61 @@ export const validateAdminCode = async (req: Request, res: Response) => {
 
     if (userUpdateError) throw userUpdateError;
 
-    // Marquer le code comme utilisé
+    // ✅ Marquer le code comme utilisé
     await supabase.from('admin_codes').update({ used: true, used_by: userId, used_at: new Date().toISOString() }).eq('id', codeData.id);
 
-    res.json({ success: true, message: 'Félicitations, vous êtes maintenant administrateur !' });
+    res.json({ success: true, message: 'Félicitations, vous êtes maintenant administrateur !', permissions: codeData.permissions });
   } catch (error: any) {
+    console.error("Erreur lors de la validation du code admin:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * Récupère tous les codes admin actifs (non utilisés et non expirés).
+ * Réservé aux super-administrateurs.
+ */
+export const getAdminCodes = async (req: Request, res: Response) => {
+  try {
+    const { data, error } = await supabase
+      .from('admin_codes')
+      .select('*')
+      .eq('used', false)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.status(200).json({ success: true, codes: data });
+  } catch (error: any) {
+    console.error("Erreur lors de la récupération des codes admin:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * Supprime (invalide) un code admin.
+ * Réservé aux super-administrateurs.
+ */
+export const deleteAdminCode = async (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+
+    if (!code) {
+      return res.status(400).json({ success: false, error: 'Le code à supprimer est manquant.' });
+    }
+
+    // On le marque comme utilisé pour l'invalider plutôt que de le supprimer
+    const { error } = await supabase
+      .from('admin_codes')
+      .update({ used: true, expires_at: new Date().toISOString() }) // On le fait expirer immédiatement
+      .eq('code', code);
+
+    if (error) throw error;
+
+    res.status(200).json({ success: true, message: `Le code ${code} a été invalidé.` });
+  } catch (error: any) {
+    console.error("Erreur lors de la suppression du code admin:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

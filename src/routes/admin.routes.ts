@@ -1,14 +1,15 @@
-// src/routes/admin.routes.ts
 import { Router } from 'express';
-import { generateAdminCode, validateAdminCode } from '../controllers/admin.controller';
-import { protect, isAdmin } from '../middleware/auth.middleware';
+import { generateAdminCode, validateAdminCode, getAdminCodes, deleteAdminCode } from '../controllers/admin.controller';
+import { protect, isSuperAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// Seuls les admins peuvent générer des codes pour d'autres admins
-router.post('/generate-code', protect, isAdmin, generateAdminCode);
+// Seuls les super-admins peuvent générer, voir et supprimer des codes
+router.post('/generate-code', protect, isSuperAdmin, generateAdminCode);
+router.get('/codes', protect, isSuperAdmin, getAdminCodes);
+router.delete('/codes/:code', protect, isSuperAdmin, deleteAdminCode);
 
-// Un utilisateur connecté peut essayer de valider un code pour devenir admin
+// N'importe quel utilisateur authentifié peut essayer de valider un code
 router.post('/validate-code', protect, validateAdminCode);
 
 export default router;

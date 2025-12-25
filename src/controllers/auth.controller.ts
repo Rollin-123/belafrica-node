@@ -1,279 +1,175 @@
-// src/controllers/auth.controller.ts
 import { Request, Response } from 'express';
 import { supabase } from '../utils/supabase';
-import { detectCountryByIP, getClientIP, validatePhoneCountryMatch } from '../utils/geolocation';
 import jwt from 'jsonwebtoken';
-import { APP_CONSTANTS } from '../utils/constants';
+import { sendTelegramMessage } from '../services/telegram.service';
 
+// Fonction pour générer un code OTP simple
+const generateOtpCode = (length = 6): string => {
+  const digits = '0123456789';
+  let code = '';
+  for (let i = 0; i < length; i++) code += digits[Math.floor(Math.random() * 10)];
+  return code;
+};
+
+/**
+ * Demande un code OTP (One-Time Password) via Supabase Auth.
+ * La géolocalisation est vérifiée ici.
+ */
 export const requestOtp = async (req: Request, res: Response) => {
-  try {
-    const { phoneNumber, countryCode } = req.body;
+  const { phoneNumber, countryCode } = req.body;
+  const fullPhoneNumber = `${countryCode}${phoneNumber.replace(/\s/g, '')}`;
 
-    // Validation basique
-    if (!phoneNumber || !countryCode) {
-      return res.status(400).json({
-        success: false,
-        error: 'Numéro de téléphone et code pays requis'
-      });
-    }
+  if (!phoneNumber || !countryCode) {
+    return res.status(400).json({ success: false, error: 'Le numéro de téléphone et le code pays sont requis.' });
+  }
 
-    const fullPhoneNumber = `${countryCode}${phoneNumber.replace(/\D/g, '')}`;
-    
-    // ✅ CORRECTION IMPORTANTE : Utiliser getClientIP au lieu de req.ip
-    const clientIP = getClientIP(req);
-    console.log('🌍 Détection IP:', {
-      clientIP: clientIP,
-      reqIP: req.ip,
-      headers: {
-        'x-forwarded-for': req.headers['x-forwarded-for'],
-        'x-real-ip': req.headers['x-real-ip']
-      }
-    });
-    
-    const location = await detectCountryByIP(clientIP);
-
-    console.log('📍 Localisation détectée:', { 
-      ip: clientIP, 
-      country: location.country, 
-      code: location.countryCode,
-      success: location.success 
-    });
-
-    // ✅ VALIDATION GÉOLOCALISATION AVEC BYPASS POSSIBLE
-    if (APP_CONSTANTS.GEO_VALIDATION_ENABLED) {
-      // Si en développement et bypass activé, on saute la validation
-      if (process.env.NODE_ENV === 'development' && APP_CONSTANTS.GEO_BYPASS_IN_DEV) {
-        console.log('🔧 BYPASS ACTIVÉ: Validation géolocalisation ignorée en développement');
-      } else {
-        const validation = validatePhoneCountryMatch(countryCode, location.countryCode);
-        
-        if (!validation.isValid) {
-          console.log('❌ Validation géolocalisation échouée:', {
-            phoneCode: countryCode,
-            detected: location.countryCode,
-            error: validation.error
-          });
-          
-          return res.status(403).json({
-            success: false,
-            error: validation.error || 'Localisation non valide',
-            detectedCountry: location.country,
-            detectedCountryCode: location.countryCode,
-            phoneCountryCode: countryCode,
-            bypassAvailable: APP_CONSTANTS.GEO_BYPASS_IN_DEV,
-            environment: process.env.NODE_ENV
-          });
-        }
-      }
-    } else {
-      console.log('⚠️ Validation géolocalisation désactivée (GEO_VALIDATION_ENABLED = false)');
-    }
-
-    // Vérifier si l'utilisateur existe déjà
-    const { data: existingUser, error: userError } = await supabase
-      .from('users')
-      .select('id, pseudo, community, is_admin')
+  try {    
+    // 1. Chercher le chat_id correspondant au numéro de téléphone
+    const { data: chatData, error: chatError } = await supabase
+      .from('telegram_chats')
+      .select('chat_id')
       .eq('phone_number', fullPhoneNumber)
       .single();
 
-    // Si utilisateur existe
-    if (existingUser && !userError) {
-      console.log('👤 Utilisateur existant trouvé:', existingUser.pseudo);
-      
-      return res.json({ 
-        success: true, 
-        message: 'Utilisateur existant', 
-        userExists: true, 
-        requiresOTP: true,
-        user: {
-          pseudo: existingUser.pseudo,
-          community: existingUser.community,
-          isAdmin: existingUser.is_admin
-        }
+    if (chatError || !chatData) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Ce numéro n'est pas encore enregistré.\n\nVeuillez d'abord interagir avec notre bot sur Telegram pour lier votre compte.\n\nLien du bot : https://t.me/Belafrica_bot"
       });
     }
 
-    // Générer OTP
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    
-    console.log(`🔑 OTP généré: ${otpCode} pour ${fullPhoneNumber}`);
-
-    // Supprimer les anciens OTP pour ce numéro
-    await supabase
-      .from('otp_codes')
-      .delete()
-      .eq('phone_number', fullPhoneNumber);
-
-    // Sauvegarder le nouvel OTP
-    const { error: otpError } = await supabase
-      .from('otp_codes')
-      .insert([{
-        phone_number: fullPhoneNumber,
-        code: otpCode,
-        expires_at: expiresAt.toISOString(),
-        created_at: new Date().toISOString(),
-        verified: false,
-        location_data: {
-          ip: clientIP,
-          country: location.country,
-          countryCode: location.countryCode,
-          city: location.city
-        }
-      }]);
+    // 2. Générer le code et le sauvegarder dans la table 'otps'
+    const otpCode = generateOtpCode();
+    const { error: otpError } = await supabase.from('otps').insert({
+      phone_number: fullPhoneNumber,
+      code: otpCode,
+      expires_at: new Date(Date.now() + 10 * 60 * 1000) // Expire dans 10 minutes
+    });
 
     if (otpError) {
-      console.error('❌ Erreur sauvegarde OTP:', otpError);
-      return res.status(500).json({
-        success: false,
-        error: 'Erreur génération OTP'
-      });
+      console.error("Erreur de sauvegarde OTP:", otpError);
+      throw new Error("Impossible de sauvegarder le code de vérification."); // Cette erreur sera attrapée par le bloc catch
     }
 
-    // 🚀 ENVOYER OTP VIA TELEGRAM (optionnel)
-    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-    const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CREATOR_CHAT_ID;
-    
-    if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-      try {
-        const telegramMessage = `📱 BELAFRICA - Nouvelle demande OTP
-• Numéro: ${fullPhoneNumber}
-• Code: ${otpCode}
-• Localisation: ${location.country} (${location.city})
-• IP: ${clientIP}
-• Pays détecté: ${location.countryCode}
-• Date: ${new Date().toLocaleString('fr-FR')}`;
-        
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: TELEGRAM_CHAT_ID,
-            text: telegramMessage,
-            parse_mode: 'HTML'
-          })
-        });
-        
-        console.log('✅ Notification Telegram envoyée');
-      } catch (telegramError) {
-        console.error('⚠️ Erreur Telegram:', telegramError);
-      }
-    }
+    // 3. Envoyer le code via Telegram
+    await sendTelegramMessage(chatData.chat_id, `Votre code de vérification pour BELAFRICA est : ${otpCode}`);
 
-    res.json({
-      success: true,
-      message: 'OTP généré avec succès',
-      code: otpCode, // ⚠️ À RETIRER EN PRODUCTION RÉELLE
-      phoneNumber: fullPhoneNumber,
-      expiresIn: '10 minutes',
-      detectedCountry: location.country,
-      detectedCountryCode: location.countryCode,
-      city: location.city,
-      environment: process.env.NODE_ENV,
-      geoValidation: {
-        enabled: APP_CONSTANTS.GEO_VALIDATION_ENABLED,
-        bypassInDev: APP_CONSTANTS.GEO_BYPASS_IN_DEV,
-        validationResult: location.success ? 'SUCCESS' : 'FAILED'
-      }
-    });
-    
+    res.status(200).json({ success: true, message: "Un code de vérification a été envoyé sur votre compte Telegram." });
+
   } catch (error: any) {
-    console.error('❌ Erreur requestOtp:', error);
+    console.error("Erreur lors de la demande d'OTP:", error);
     res.status(500).json({ 
-      success: false,
-      error: 'Erreur interne du serveur',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      success: false, 
+      error: "Erreur interne du serveur lors de la demande d'OTP.",
+      details: error.message 
     });
   }
 };
 
-// ✅ verifyOtp reste identique
+/**
+ * Vérifie un code OTP et retourne une session (token JWT).
+ */
 export const verifyOtp = async (req: Request, res: Response) => {
-  try {
-    const { phoneNumber, code } = req.body;
+  const { phoneNumber, code } = req.body;
 
-    const { data: otpData, error } = await supabase
-      .from('otp_codes')
+  if (!phoneNumber || !code) {
+    return res.status(400).json({ success: false, error: 'Le numéro de téléphone et le code sont requis.' });
+  }
+
+  try {
+    // 1. Trouver le code dans notre table
+    const { data: otpData, error: otpError } = await supabase
+      .from('otps')
       .select('*')
       .eq('phone_number', phoneNumber)
       .eq('code', code)
-      .eq('verified', false)
-      .gt('expires_at', new Date().toISOString())
       .single();
-
-    if (error || !otpData) {
-      return res.status(401).json({ success: false, error: 'Code OTP invalide ou expiré' });
+      
+    if (otpError || !otpData) {
+      return res.status(400).json({ success: false, error: 'Code OTP invalide.' });
+    }
+    
+    // 2. Vérifier l'expiration
+    if (new Date(otpData.expires_at) < new Date()) {
+      return res.status(400).json({ success: false, error: 'Code OTP expiré.' });
     }
 
-    await supabase.from('otp_codes').update({ verified: true }).eq('id', otpData.id);
+    // 3. Supprimer le code pour qu'il ne soit pas réutilisé
+    await supabase.from('otps').delete().eq('id', otpData.id);
+    
+    // 4. ✅ Créer un token JWT temporaire pour autoriser la prochaine étape
+    const tempToken = jwt.sign(
+      { phoneNumber: phoneNumber }, 
+      process.env.JWT_SECRET!, 
+      { expiresIn: '15m' } 
+    );
 
-    console.log('✅ OTP validé pour:', phoneNumber);
-    res.json({ success: true, verified: true, message: 'OTP vérifié avec succès' });
+    res.status(200).json({ 
+      success: true, 
+      message: 'Code vérifié avec succès.', 
+      tempToken: tempToken 
+    });
+
   } catch (error: any) {
-    console.error('❌ Erreur verifyOtp:', error);
-    res.status(500).json({ success: false, error: 'Erreur interne du serveur' });
+    console.error("Erreur lors de la vérification de l'OTP:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// ✅ completeProfile reste identique
 export const completeProfile = async (req: Request, res: Response) => {
+  // @ts-ignore
+  const phoneNumber = req.user?.phoneNumber; 
+  const { countryCode, countryName, nationality, nationalityName, community, pseudo, email, avatar } = req.body;
+
+  if (!phoneNumber) {
+    return res.status(401).json({ success: false, error: 'Token invalide ou expiré.' });
+  }
+
+  if (!pseudo) {
+    return res.status(400).json({ success: false, error: 'Le pseudo est requis.' });
+  }
+
   try {
-    const profileData = req.body;
-
-    const { data: existingUser } = await supabase.from('users').select('id').eq('phone_number', profileData.phoneNumber).single();
-    if (existingUser) {
-      return res.status(409).json({ success: false, error: 'Un utilisateur avec ce numéro existe déjà' });
-    }
-
-    const userData = {
-      phone_number: profileData.phoneNumber,
-      country_code: profileData.countryCode,
-      country_name: profileData.countryName || 'Unknown',
-      nationality: profileData.nationality,
-      nationality_name: profileData.nationalityName,
-      pseudo: profileData.pseudo,
-      email: profileData.email,
-      avatar_url: profileData.avatar || null,
-      community: profileData.community,
-    };
-
-    const { data: newUser, error: insertError } = await supabase.from('users').insert([userData]).select().single();
-
-    if (insertError) {
-      console.error('❌ Erreur création utilisateur:', insertError);
-      return res.status(500).json({ success: false, error: 'Erreur création utilisateur' });
-    }
-
-    console.log('✅ Utilisateur créé:', newUser.id);
-
-    // ✅ Génération d'un token JWT sécurisé
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error('❌ Secret JWT manquant. Définir JWT_SECRET dans .env');
-      return res.status(500).json({ success: false, error: 'Erreur de configuration serveur' });
-    }
-
-    const payload = { 
-      userId: newUser.id, 
-      isAdmin: newUser.is_admin,
-      community: newUser.community
-    };
-    const token = jwt.sign(payload, jwtSecret, { expiresIn: '7d' });
-
-    res.status(201).json({
-      success: true,
-      token: token,
-      user: {
-        id: newUser.id,
-        pseudo: newUser.pseudo,
-        community: newUser.community,
-        isAdmin: newUser.is_admin,
-        avatar: newUser.avatar_url,
-      },
-      message: 'Profil créé avec succès',
+    // Créer l'utilisateur dans Supabase Auth et dans la table 'users'
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      phone: phoneNumber,
+      phone_confirm: true, 
+      email: email,
     });
+
+    if (authError) throw authError;
+
+    const newUser = authData.user;
+
+    const { data: profileData, error: profileError } = await supabase
+      .from('users')
+      .insert({
+        id: newUser.id,
+        phone_number: phoneNumber,
+        country_code: countryCode,
+        country_name: countryName,
+        nationality: nationality,
+        nationality_name: nationalityName,
+        community: community,
+        pseudo: pseudo,
+        email: email,
+        avatar_url: avatar, // L'URL de l'avatar (ex: Cloudinary) sera gérée côté client
+      })
+      .select()
+      .single();
+
+    if (profileError) throw profileError;
+
+    // ✅ Générer un token de session final et permanent pour l'utilisateur créé
+    const finalToken = jwt.sign(
+      { userId: newUser.id, email: newUser.email }, // Contenu du token
+      process.env.JWT_SECRET!,
+      { expiresIn: '30d' } // Expire dans 30 jours
+    );
+
+    res.status(201).json({ success: true, user: profileData, token: finalToken });
   } catch (error: any) {
-    console.error('❌ Erreur completeProfile:', error);
-    res.status(500).json({ success: false, error: 'Erreur création profil' });
+    console.error("Erreur lors de la finalisation du profil:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
