@@ -9,7 +9,6 @@ export declare const APP_CONSTANTS: {
     MAX_IMAGE_SIZE_MB: number;
     MAX_FILE_SIZE_MB: number;
     GEO_VALIDATION_ENABLED: boolean;
-    GEO_BYPASS_IN_DEV: boolean;
     PHONE_COUNTRY_MAPPING: {
         '+33': string[];
         '+32': string[];

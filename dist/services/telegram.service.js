@@ -3,220 +3,62 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TelegramService = void 0;
-exports.getTelegramService = getTelegramService;
-const axios_1 = __importDefault(require("axios"));
-class TelegramService {
-    constructor(config) {
-        this.botToken = config.botToken;
-        this.apiUrl = `https://api.telegram.org/bot${this.botToken}`;
-        this.creatorChatId = config.chatId || process.env.TELEGRAM_CREATOR_CHAT_ID || '';
-        console.log('🤖 Service Telegram initialisé');
-        console.log(`📞 Chat ID créateur: ${this.creatorChatId ? 'Configuré' : 'Non configuré'}`);
-    }
-    // ✅ ENVOYER un OTP VIA TELEGRAM (VRAI ENVOI AU CRÉATEUR)
-    // async sendOTP(phoneNumber: string): Promise<OTPSendResult> {
-    //   try {
-    //     // 1. Générer un code OTP sécurisé
-    //     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    //     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-    //     console.log(`📱 Génération OTP pour ${phoneNumber}: ${otpCode}`);
-    //     // 2. ENVOYER VRAIMENT AU CRÉATEUR VIA TELEGRAM
-    //     if (this.creatorChatId) {
-    //       const message = `🔐 CODE OTP BELAFRICA\n\n` +
-    //                      `📞 Numéro: ${phoneNumber}\n` +
-    //                      `🔢 Code: ${otpCode}\n` +
-    //                      `⏰ Expire: ${expiresAt.toLocaleTimeString('fr-FR')} (dans 10 min)\n` +
-    //                      `📅 Date: ${expiresAt.toLocaleDateString('fr-FR')}\n\n` +
-    //                      `📍 ${new Date().toLocaleString('fr-FR')}\n\n` +
-    //                      `ℹ️ Envoyez ce code à l'utilisateur`;
-    //       const sent = await this.sendMessage(this.creatorChatId, message);
-    //       if (sent) {
-    //         console.log(`✅ OTP envoyé au créateur Telegram: ${otpCode} pour ${phoneNumber}`);
-    //         return {
-    //           success: true,
-    //           message: `Code OTP ${otpCode} généré. Le créateur a été notifié sur Telegram et vous enverra le code.`,
-    //           code: otpCode
-    //         };
-    //       } else {
-    //         console.error(`❌ Échec envoi Telegram au créateur pour ${phoneNumber}`);
-    //         // Fallback: retourner quand même le code
-    //         return {
-    //           success: true,
-    //           message: `Code OTP ${otpCode} généré. Contactez le créateur pour obtenir le code.`,
-    //           code: otpCode
-    //         };
-    //       }
-    //     } else {
-    //       console.error('❌ TELEGRAM_CREATOR_CHAT_ID non configuré');
-    //       return {
-    //         success: true,
-    //         message: `Code OTP ${otpCode} généré. Contactez le support pour obtenir le code.`,
-    //         code: otpCode
-    //       };
-    //     }
-    //   } catch (error: any) {
-    //     console.error('❌ Erreur envoi OTP Telegram:', error);
-    //     // Générer quand même un code en cas d'erreur
-    //     const fallbackCode = Math.floor(100000 + Math.random() * 900000).toString();
-    //     return {
-    //       success: true,
-    //       message: `Erreur Telegram. Code de secours: ${fallbackCode}`,
-    //       code: fallbackCode,
-    //       error: `Erreur Telegram: ${error.message}`
-    //     };
-    //   }
-    // }
-    async sendOTP(phoneNumber, code) {
-        try {
-            console.log('🤖 [TELEGRAM] Envoi OTP:', { phoneNumber, code });
-            // Simuler l'envoi (en production, envoi réel au bot)
-            const message = `🔐 Code OTP BELAFRICA\n\n` +
-                `Code: ${code}\n` +
-                `Numéro: ${phoneNumber}\n` +
-                `Expire dans: 10 minutes`;
-            // Log pour le développeur
-            console.log('📱 Message Telegram simulé:', message);
-            // En production, décommentez :
-            await this.sendMessage(this.creatorChatId, message);
-            return {
-                success: true,
-                message: 'Code OTP généré',
-                code: code
-            };
-        }
-        catch (error) {
-            console.error('❌ [TELEGRAM] Erreur envoi OTP:', error);
-            return {
-                success: false,
-                error: 'Erreur envoi Telegram'
-            };
-        }
-    }
-    // ✅ ENVOYER un message Telegram (VRAI)
-    async sendMessage(chatId, text, parseMode = 'HTML') {
-        try {
-            console.log(`📤 Envoi message Telegram à ${chatId}...`);
-            const response = await axios_1.default.post(`${this.apiUrl}/sendMessage`, {
-                chat_id: chatId,
-                text: text,
-                parse_mode: parseMode,
-                disable_web_page_preview: true
-            }, {
-                timeout: 10000 // 10 secondes timeout
-            });
-            console.log(`✅ Message Telegram envoyé à ${chatId}:`, response.data.result?.message_id);
-            return response.data.ok === true;
-        }
-        catch (error) {
-            console.error('❌ Erreur envoi message Telegram:', {
-                chatId,
-                error: error.response?.data?.description || error.message
-            });
-            return false;
-        }
-    }
-    // ✅ TESTER LA CONNEXION TELEGRAM
-    async testConnection() {
-        try {
-            console.log('🔗 Test connexion Telegram...');
-            const response = await axios_1.default.get(`${this.apiUrl}/getMe`, {
-                timeout: 5000
-            });
-            if (response.data.ok && response.data.result) {
-                console.log(`✅ Bot Telegram connecté: @${response.data.result.username}`);
-                // Envoyer un message de test au créateur
-                if (this.creatorChatId) {
-                    await this.sendMessage(this.creatorChatId, '🤖 Bot BELAFRICA connecté et opérationnel !\n\nPrêt à envoyer des codes OTP.');
-                }
-                return {
-                    success: true,
-                    username: response.data.result.username
-                };
-            }
-            return {
-                success: false,
-                error: 'Réponse Telegram invalide'
-            };
-        }
-        catch (error) {
-            console.error('❌ Erreur connexion Telegram:', error.message);
-            return {
-                success: false,
-                error: `Erreur API Telegram: ${error.message}`
-            };
-        }
-    }
-    // ✅ ENVOYER une notification admin
-    async sendAdminNotification(userData, code) {
-        try {
-            const message = `👑 NOUVELLE DEMANDE ADMINISTRATEUR\n\n` +
-                `👤 Utilisateur: ${userData.pseudo}\n` +
-                `🏠 Communauté: ${userData.community}\n` +
-                `📞 Téléphone: ${userData.phoneNumber}\n` +
-                `📧 Email: ${userData.email || 'Non fourni'}\n\n` +
-                `🔑 CODE ADMIN: ${code}\n` +
-                `⏰ Valable: 72 heures\n\n` +
-                `📍 ${new Date().toLocaleString('fr-FR')}`;
-            if (this.creatorChatId) {
-                return await this.sendMessage(this.creatorChatId, message);
-            }
-            console.warn('⚠️ TELEGRAM_CREATOR_CHAT_ID non configuré pour notification admin');
-            return false;
-        }
-        catch (error) {
-            console.error('❌ Erreur notification admin Telegram:', error);
-            return false;
-        }
-    }
-    // ✅ CONFIGURER les commandes du bot
-    async setupBotCommands() {
-        try {
-            const commands = [
-                { command: 'start', description: 'Démarrer le bot BELAFRICA' },
-                { command: 'help', description: 'Afficher l\'aide' },
-                { command: 'status', description: 'Vérifier le statut du bot' },
-                { command: 'support', description: 'Contacter le support' }
-            ];
-            const response = await axios_1.default.post(`${this.apiUrl}/setMyCommands`, {
-                commands: commands,
-                scope: { type: 'default' },
-                language_code: 'fr'
-            });
-            console.log('✅ Commandes bot configurées');
-            return response.data.ok === true;
-        }
-        catch (error) {
-            console.error('❌ Erreur configuration commandes bot:', error);
-            return false;
-        }
-    }
+exports.sendTelegramMessage = exports.initializeTelegramBot = void 0;
+const node_telegram_bot_api_1 = __importDefault(require("node-telegram-bot-api"));
+const supabase_1 = require("../utils/supabase");
+const token = process.env.TELEGRAM_BOT_TOKEN;
+if (!token) {
+    console.warn('⚠️ TELEGRAM_BOT_TOKEN non défini. Le bot Telegram ne démarrera pas.');
 }
-exports.TelegramService = TelegramService;
-// Singleton amélioré
-let telegramInstance = null;
-function getTelegramService() {
-    if (!telegramInstance) {
-        const botToken = process.env.TELEGRAM_BOT_TOKEN || '8407730360:AAGRTq8xz7zO9ZS-TM7nVZtr409TAZW8nFM';
-        const creatorChatId = process.env.TELEGRAM_CREATOR_CHAT_ID || '7486840834';
-        console.log(`🤖 Initialisation Telegram avec token: ${botToken.substring(0, 10)}...`);
-        console.log(`👑 Chat ID créateur: ${creatorChatId}`);
-        telegramInstance = new TelegramService({
-            botToken: botToken,
-            chatId: creatorChatId
+const bot = token ? new node_telegram_bot_api_1.default(token, { polling: true }) : null;
+const initializeTelegramBot = () => {
+    if (!bot)
+        return;
+    console.log('🤖 Bot Telegram démarré et à l\'écoute...');
+    // Gère la commande /start
+    bot.onText(/\/start/, (msg) => {
+        const chatId = msg.chat.id;
+        bot.sendMessage(chatId, "Bienvenue sur le bot de BELAFRICA ! Pour lier votre numéro de téléphone à votre compte, veuillez utiliser le bouton ci-dessous.", {
+            reply_markup: {
+                keyboard: [[{ text: "🔗 Partager mon contact", request_contact: true }]],
+                resize_keyboard: true,
+                one_time_keyboard: true,
+            },
         });
-        // Tester la connexion au démarrage
-        telegramInstance.testConnection().then(health => {
-            if (health.success) {
-                console.log(`🎉 Bot Telegram prêt: @${health.username}`);
-                telegramInstance.setupBotCommands();
-            }
-            else {
-                console.error('❌ Bot Telegram non connecté:', health.error);
-            }
-        });
-    }
-    return telegramInstance;
-}
-exports.default = TelegramService;
+    });
+    // Gère le partage de contact
+    bot.on('contact', async (msg) => {
+        const chatId = msg.chat.id;
+        let phone = msg.contact?.phone_number.replace(/\s/g, '');
+        if (!phone) {
+            bot.sendMessage(chatId, "❌ Impossible de récupérer votre numéro. Veuillez réessayer.");
+            return;
+        }
+        // ✅ S'assurer que le numéro commence toujours par un '+'
+        if (!phone.startsWith('+')) {
+            phone = `+${phone}`;
+        }
+        try {
+            // Enregistre ou met à jour le lien dans la base de données
+            const { error } = await supabase_1.supabase
+                .from('telegram_chats')
+                .upsert({ chat_id: chatId, phone_number: phone }, { onConflict: 'phone_number' });
+            if (error)
+                throw error;
+            bot.sendMessage(chatId, `✅ Votre numéro ${phone} a bien été enregistré ! Vous pouvez maintenant recevoir des codes de vérification.`);
+        }
+        catch (error) {
+            console.error("Erreur lors de l'enregistrement du contact Telegram:", error);
+            bot.sendMessage(chatId, "❌ Une erreur est survenue lors de l'enregistrement. Veuillez contacter le support.");
+        }
+    });
+};
+exports.initializeTelegramBot = initializeTelegramBot;
+// Fonction pour envoyer un message à un chat_id spécifique
+const sendTelegramMessage = (chatId, message) => {
+    if (!bot)
+        return Promise.reject('Bot Telegram non initialisé.');
+    return bot.sendMessage(chatId, message);
+};
+exports.sendTelegramMessage = sendTelegramMessage;
 //# sourceMappingURL=telegram.service.js.map

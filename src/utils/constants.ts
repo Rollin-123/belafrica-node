@@ -18,9 +18,6 @@ export const APP_CONSTANTS = {
   GEO_VALIDATION_ENABLED: process.env.GEO_VALIDATION_ENABLED 
     ? process.env.GEO_VALIDATION_ENABLED === 'true' 
     : true,
-  GEO_BYPASS_IN_DEV: process.env.GEO_BYPASS_IN_DEV 
-    ? process.env.GEO_BYPASS_IN_DEV === 'true' 
-    : true,
   
   // Pays autorisés (code téléphone -> codes ISO)
   PHONE_COUNTRY_MAPPING: {
@@ -113,3 +110,4 @@ export const GEO_VALIDATION_ENABLED = APP_CONSTANTS.GEO_VALIDATION_ENABLED;
 export const countryMapping = APP_CONSTANTS.PHONE_COUNTRY_MAPPING;
 export const countryNames = APP_CONSTANTS.COUNTRY_NAMES;
 export const africanCountries = APP_CONSTANTS.AFRICAN_COUNTRIES;
+// src/constants.ts
