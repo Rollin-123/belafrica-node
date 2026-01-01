@@ -34,6 +34,7 @@ export const protect = asyncHandler(async (req: Request, res: Response, next: Ne
       // @ts-ignore
       req.user = user;
       next();
+
     } catch (error) {
       res.status(401);
       throw new Error('Non autorisé: Token invalide ou expiré.');
@@ -57,6 +58,7 @@ export const protectTemp = asyncHandler(async (req: Request, res: Response, next
 
       // 2. Vérifier le token avec la clé secrète
       const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string, temp: boolean };
+      console.log('Decoded temp token in protectTemp:', decoded); // Debugging line
 
       // 3. S'assurer que c'est bien un token temporaire
       if (!decoded.temp) {

@@ -53,6 +53,7 @@ exports.protectTemp = (0, express_async_handler_1.default)(async (req, res, next
             token = req.headers.authorization.split(' ')[1];
             // 2. Vérifier le token avec la clé secrète
             const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+            console.log('Decoded temp token in protectTemp:', decoded); // Debugging line
             // 3. S'assurer que c'est bien un token temporaire
             if (!decoded.temp) {
                 res.status(401);
