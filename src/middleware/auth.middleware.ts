@@ -56,19 +56,19 @@ export const protectTemp = asyncHandler(async (req: Request, res: Response, next
       // 1. Extraire le token
       token = req.headers.authorization.split(' ')[1];
 
-      // 2. ✅ CORRECTION DÉFINITIVE: Vérifier le token avec la clé secrète TEMPORAIRE
-      const decoded = jwt.verify(token, process.env.TEMP_JWT_SECRET!) as { userId: string, temp: boolean };
+      // 2. Vérifier le token avec la clé secrète TEMPORAIRE
+      const decoded = jwt.verify(token, process.env.TEMP_JWT_SECRET!) as { phoneNumber: string, temp: boolean };
       console.log('Decoded temp token in protectTemp:', decoded); // Debugging line
 
       // 3. S'assurer que c'est bien un token temporaire
-      if (!decoded.temp) {
+      if (!decoded.temp || !decoded.phoneNumber) {
         res.status(401);
-        throw new Error('Non autorisé, token invalide.');
+        throw new Error('Non autorisé, token temporaire invalide.');
       }
 
       // 4. Attacher le payload décodé à la requête
       // @ts-ignore
-      req.user = { id: decoded.userId }; // On a juste besoin de l'ID pour `completeProfile`
+      req.user = decoded; // req.user sera { phoneNumber: '...', temp: true }
       next();
     } catch (error) {
       console.error('Erreur de token temporaire:', error);

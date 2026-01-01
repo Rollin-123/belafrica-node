@@ -76,59 +76,41 @@ exports.verifyOtp = (0, express_async_handler_1.default)(async (req, res) => {
         res.status(401);
         throw new Error('Code OTP expiré.');
     }
-    // OTP est valide, on peut le supprimer pour qu'il ne soit pas réutilisé
+    // 2. Supprimer le code OTP pour qu'il ne puisse pas être réutilisé
     await supabase_1.supabase.from('otps').delete().eq('id', otpData.id);
-    // 2. Vérifier si un utilisateur existe déjà dans la table 'users'
-    let { data: user, error: userError } = await supabase_1.supabase
+    // 3. Vérifier si l'utilisateur existe déjà et est vérifié
+    const { data: existingUser } = await supabase_1.supabase
         .from('users')
         .select('*')
         .eq('phone_number', phoneNumber)
         .single();
-    // Si l'utilisateur existe déjà et a un profil complet, on le connecte directement
-    if (user && user.is_verified) {
-        const token = jsonwebtoken_1.default.sign({ userId: user.id }, process.env.JWT_SECRET, {
+    if (existingUser && existingUser.is_verified) { // L'utilisateur est déjà entièrement enregistré. Le connecter.
+        const token = jsonwebtoken_1.default.sign({ userId: existingUser.id }, process.env.JWT_SECRET, {
             expiresIn: '7d',
         });
         res.json({
             success: true,
             message: 'Connexion réussie.',
             token,
-            user,
+            user: existingUser,
         });
-        return;
     }
-    // Si l'utilisateur n'existe pas, on le crée en mode 'pending_profile'
-    if (!user) {
-        const { data: newUser, error: creationError } = await supabase_1.supabase
-            .from('users')
-            .insert({ phone_number: phoneNumber, is_verified: false })
-            .select()
-            .single();
-        if (creationError || !newUser) {
-            res.status(500);
-            throw new Error('Erreur lors de la création de l\'utilisateur temporaire.');
-        }
-        user = newUser; // On utilise le nouvel utilisateur pour la suite
-    }
-    // 3. À ce stade, on a un utilisateur (existant ou nouveau) avec un statut non vérifié.
-    // On génère un token temporaire pour l'étape de finalisation du profil.
-    const tempToken = jsonwebtoken_1.default.sign({ userId: user.id, temp: true }, // ✅ PAYLOAD CORRECT
-    process.env.TEMP_JWT_SECRET, // ✅ SECRET CORRECT
-    { expiresIn: '15m' } // Durée de vie de 15 minutes pour compléter le profil
-    );
+    // 4. User is new or has an incomplete profile. Generate a temporary token with the phone number.
+    const tempToken = jsonwebtoken_1.default.sign({ phoneNumber: phoneNumber, temp: true }, // Payload contains phoneNumber
+    process.env.TEMP_JWT_SECRET, { expiresIn: '15m' });
     res.json({
         success: true,
         message: 'Code vérifié avec succès.',
-        tempToken, // On renvoie le token temporaire
+        tempToken,
     });
 });
 exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) => {
-    // 1. Get user ID from the protectTemp middleware
+    // 1. Get phoneNumber from the protectTemp middleware
     // @ts-ignore
-    const userId = req.user?.id;
-    if (!userId) {
+    const phoneNumber = req.user?.phoneNumber;
+    if (!phoneNumber) {
         res.status(401);
-        throw new Error('Token invalide ou utilisateur non identifié.');
+        throw new Error('Token invalide ou session expirée.');
     }
     // 2. Get profile data from the request body
     const { countryCode, countryName, nationality, nationalityName, pseudo, email, avatar, community } = req.body;
@@ -137,10 +119,11 @@ exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) 
         res.status(400);
         throw new Error('Le pseudo, le pays, la nationalité et la communauté sont requis.');
     }
-    // 4. Update the user in the database
-    const { data: updatedUser, error: updateError } = await supabase_1.supabase
+    // 4. Find or update the user in the database using `upsert`
+    const { data: finalUser, error: upsertError } = await supabase_1.supabase
         .from('users')
-        .update({
+        .upsert({
+        phone_number: phoneNumber, // This is the conflict key
         country_code: countryCode,
         country_name: countryName,
         nationality: nationality,
@@ -152,26 +135,26 @@ exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) 
         is_verified: true, // Mark the user as fully verified
         updated_at: new Date().toISOString(),
     })
-        .eq('id', userId)
+        .eq('phone_number', phoneNumber) // Ensure we update the correct user
         .select()
         .single();
-    if (updateError) {
-        console.error("Erreur lors de la mise à jour du profil:", updateError);
+    if (upsertError) {
+        console.error("Erreur lors de la finalisation du profil (upsert):", upsertError);
         res.status(500);
         throw new Error('Erreur serveur lors de la finalisation du profil.');
     }
-    if (!updatedUser) {
+    if (!finalUser) {
         res.status(404);
         throw new Error("Impossible de retrouver l'utilisateur après la mise à jour.");
     }
     // 5. Generate the final, permanent session token
-    const finalToken = jsonwebtoken_1.default.sign({ userId: updatedUser.id }, // Payload for the permanent token
+    const finalToken = jsonwebtoken_1.default.sign({ userId: finalUser.id }, // Payload for the permanent token
     process.env.JWT_SECRET, { expiresIn: '30d' });
     // 6. Send the successful response
     res.status(200).json({
         success: true,
         message: 'Profil créé avec succès.',
-        user: updatedUser,
+        user: finalUser,
         token: finalToken
     });
 });
