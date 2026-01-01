@@ -56,8 +56,8 @@ export const protectTemp = asyncHandler(async (req: Request, res: Response, next
       // 1. Extraire le token
       token = req.headers.authorization.split(' ')[1];
 
-      // 2. Vérifier le token avec la clé secrète
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string, temp: boolean };
+      // 2. ✅ CORRECTION DÉFINITIVE: Vérifier le token avec la clé secrète TEMPORAIRE
+      const decoded = jwt.verify(token, process.env.TEMP_JWT_SECRET!) as { userId: string, temp: boolean };
       console.log('Decoded temp token in protectTemp:', decoded); // Debugging line
 
       // 3. S'assurer que c'est bien un token temporaire
