@@ -90,12 +90,12 @@ class PostsController {
             }
             // ✅ CORRECTION : Utilisez l'interface PostData correctement
             const postData = {
-                authorId: userId, // <-- authorId au lieu de author_id
+                authorId: userId,
                 content,
                 imageUrls: imageUrls || [],
                 visibility,
                 community: user.community,
-                expiresAt // <-- expiresAt au lieu de expires_at
+                expiresAt: expiresAt
             };
             const post = await supabase.createPost(postData);
             res.json({

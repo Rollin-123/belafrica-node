@@ -12,32 +12,25 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
  * et attache l'ID de l'utilisateur à l'objet `req` pour les prochains middlewares/contrôleurs.
  */
 const protect = async (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ success: false, error: 'Non autorisé: Token manquant ou malformé.' });
-    }
-    const token = authHeader.split(' ')[1];
-    // Essayer de valider avec Supabase (pour les sessions établies)
-    const { data: { user: supabaseUser }, error: supabaseError } = await supabase_1.supabase.auth.getUser(token);
-    if (supabaseUser) {
-        // @ts-ignore
-        req.user = { userId: supabaseUser.id };
-        return next();
-    }
-    // Si Supabase échoue, essayer de valider comme un token temporaire
+    let token;
     try {
-        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
-        if (decoded.phoneNumber) {
+        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            token = req.headers.authorization.split(' ')[1];
+            // On valide TOUS nos tokens (temporaires ou finaux) avec notre secret JWT.
+            const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+            // Attacher le payload décodé directement à req.user
             // @ts-ignore
-            req.user = { phoneNumber: decoded.phoneNumber };
+            req.user = decoded;
             return next();
+        }
+        if (!token) {
+            return res.status(401).json({ success: false, error: 'Non autorisé, pas de token' });
         }
     }
     catch (jwtError) {
-        // Si les deux échouent, le token est invalide
+        // Si la vérification JWT échoue, le token est invalide ou expiré.
         return res.status(401).json({ success: false, error: 'Non autorisé: Token invalide ou expiré.' });
     }
-    return res.status(401).json({ success: false, error: 'Non autorisé: Token invalide.' });
 };
 exports.protect = protect;
 /**

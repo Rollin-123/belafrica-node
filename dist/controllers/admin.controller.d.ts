@@ -4,6 +4,10 @@ import { Request, Response } from 'express';
  */
 export declare const generateAdminCode: (req: Request, res: Response) => Promise<Response<any, Record<string, any>> | undefined>;
 /**
+ * Permet à un utilisateur de soumettre une demande pour devenir admin.
+ */
+export declare const submitAdminPromotionRequest: (req: Request, res: Response) => Promise<Response<any, Record<string, any>> | undefined>;
+/**
  * Valide un code et promeut un utilisateur au rang d'administrateur.
  */
 export declare const validateAdminCode: (req: Request, res: Response) => Promise<Response<any, Record<string, any>> | undefined>;

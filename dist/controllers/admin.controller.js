@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAdminCode = exports.getAdminCodes = exports.validateAdminCode = exports.generateAdminCode = void 0;
+exports.deleteAdminCode = exports.getAdminCodes = exports.validateAdminCode = exports.submitAdminPromotionRequest = exports.generateAdminCode = void 0;
 const supabase_1 = require("../utils/supabase");
 // ✅ Utiliser une méthode de génération de code plus simple et lisible
 const generateShortCode = (length = 6) => {
@@ -48,6 +48,42 @@ const generateAdminCode = async (req, res) => {
 };
 exports.generateAdminCode = generateAdminCode;
 /**
+ * Permet à un utilisateur de soumettre une demande pour devenir admin.
+ */
+const submitAdminPromotionRequest = async (req, res) => {
+    try {
+        // @ts-ignore
+        const userId = req.user?.userId;
+        const { identityImageUrl, motivation } = req.body;
+        if (!userId) {
+            return res.status(401).json({ success: false, error: 'Utilisateur non authentifié.' });
+        }
+        if (!identityImageUrl || !motivation) {
+            return res.status(400).json({ success: false, error: 'Une image de pièce d\'identité et une motivation sont requises.' });
+        }
+        const { data, error } = await supabase_1.supabase
+            .from('admin_requests')
+            .insert({
+            user_id: userId,
+            identity_image_url: identityImageUrl,
+            motivation: motivation,
+            status: 'pending' // 'pending', 'approved', 'rejected'
+        });
+        if (error) {
+            // Gérer le cas où une demande existe déjà si nécessaire (contrainte unique sur user_id)
+            if (error.code === '23505') { // unique_violation
+                return res.status(409).json({ success: false, error: 'Vous avez déjà une demande en cours.' });
+            }
+            throw error;
+        }
+        res.status(201).json({ success: true, message: 'Votre demande a été soumise avec succès et sera examinée.' });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+exports.submitAdminPromotionRequest = submitAdminPromotionRequest;
+/**
  * Valide un code et promeut un utilisateur au rang d'administrateur.
  */
 const validateAdminCode = async (req, res) => {
@@ -60,7 +96,7 @@ const validateAdminCode = async (req, res) => {
             return res.status(401).json({ success: false, error: 'Utilisateur non authentifié.' });
         }
         // ✅ Récupérer l'utilisateur et son code
-        const { data: user, error: userError } = await supabase_1.supabase.from('users').select('community, email').eq('id', userId).single();
+        const { data: user, error: userError } = await supabase_1.supabase.from('users').select('id, community, email, is_admin, admin_permissions').eq('id', userId).single(); // ✅ Récupérer admin_permissions aussi
         if (userError || !user) {
             return res.status(404).json({ success: false, error: 'Utilisateur non trouvé.' });
         }
@@ -82,19 +118,26 @@ const validateAdminCode = async (req, res) => {
                 return res.status(403).json({ success: false, error: `Ce code est pour la communauté ${codeData.community}, mais vous appartenez à ${user.community}.` });
             }
         }
+        // Fusionner les permissions existantes avec les nouvelles pour ne pas écraser les droits
+        const existingPermissions = new Set(user.admin_permissions || []);
+        codeData.permissions.forEach((p) => existingPermissions.add(p));
+        const newPermissions = Array.from(existingPermissions);
+        // Déterminer le nouveau niveau d'admin
+        const newAdminLevel = newPermissions.includes('post_international') ? 'international' : 'national';
         // ✅ Mettre à jour l'utilisateur
         const { error: userUpdateError } = await supabase_1.supabase
             .from('users')
             .update({
             is_admin: true,
-            admin_permissions: codeData.permissions,
+            admin_permissions: newPermissions,
+            admin_level: newAdminLevel
         })
             .eq('id', userId);
         if (userUpdateError)
             throw userUpdateError;
         // ✅ Marquer le code comme utilisé
         await supabase_1.supabase.from('admin_codes').update({ used: true, used_by: userId, used_at: new Date().toISOString() }).eq('id', codeData.id);
-        res.json({ success: true, message: 'Félicitations, vous êtes maintenant administrateur !', permissions: codeData.permissions });
+        res.json({ success: true, message: 'Félicitations, vous êtes maintenant administrateur !', permissions: newPermissions });
     }
     catch (error) {
         console.error("Erreur lors de la validation du code admin:", error);

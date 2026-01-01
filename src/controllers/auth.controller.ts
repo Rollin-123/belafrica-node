@@ -100,7 +100,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
     // 4. ✅ Créer un token JWT temporaire pour autoriser la prochaine étape
     const tempToken = jwt.sign(
       { phoneNumber: phoneNumber }, 
-      process.env.JWT_SECRET!, 
+      process.env.JWT_SECRET!, // ✅ CORRECTION: Utiliser le secret JWT standard
       { expiresIn: '15m' } 
     );
 
@@ -118,58 +118,98 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
 export const completeProfile = async (req: Request, res: Response) => {
   // @ts-ignore
-  const phoneNumber = req.user?.phoneNumber; 
-  const { countryCode, countryName, nationality, nationalityName, community, pseudo, email, avatar } = req.body;
+  const phoneNumber = req.user?.phoneNumber;
+  const { countryCode, countryName, nationality, nationalityName, pseudo, email, avatar } = req.body;
 
   if (!phoneNumber) {
     return res.status(401).json({ success: false, error: 'Token invalide ou expiré.' });
   }
 
-  if (!pseudo) {
-    return res.status(400).json({ success: false, error: 'Le pseudo est requis.' });
+  if (!pseudo || !countryName || !nationalityName) {
+    return res.status(400).json({ success: false, error: 'Le pseudo, le pays et la nationalité sont requis.' });
   }
 
   try {
-    // Créer l'utilisateur dans Supabase Auth et dans la table 'users'
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      phone: phoneNumber,
-      phone_confirm: true, 
-      email: email,
+    let authUser;
+
+    // ÉTAPE 1 & 2: Tenter de créer l'utilisateur. S'il existe déjà, le récupérer.
+    const { data: newAuthData, error: authError } = await supabase.auth.admin.createUser({
+        phone: phoneNumber,
+        phone_confirm: true,
+        email: email, // L'email est optionnel ici, il sera mis à jour plus tard
     });
 
-    if (authError) throw authError;
+    if (authError) {
+      // Si l'erreur indique que l'utilisateur existe déjà
+      if (authError.message.includes('already exists')) {
+        console.log('Utilisateur existant détecté, récupération des informations...');
+        // On récupère l'utilisateur existant par son numéro de téléphone.
+        // Note: listUsers ne filtre pas, on doit trouver le bon dans la liste.
+        // C'est une opération coûteuse, mais nécessaire dans ce cas de figure.
+        // Pour une app à grande échelle, une autre stratégie serait nécessaire.
+        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+        if (listError) throw listError;
+        
+        authUser = users.find(u => u.phone === phoneNumber);
 
-    const newUser = authData.user;
+      } else {
+        // Une autre erreur s'est produite lors de la création
+        throw authError;
+      }
+    } else {
+      // La création a réussi, c'est un nouvel utilisateur
+      authUser = newAuthData.user;
+    }
 
-    const { data: profileData, error: profileError } = await supabase
+    if (!authUser) {
+      throw new Error("Impossible de créer ou de trouver l'utilisateur d'authentification.");
+    }
+
+    // Le trigger `handle_new_user` a déjà (ou va) créer une ligne dans `public.users`.
+    // Nous allons maintenant mettre à jour cette ligne.
+
+    const finalCommunityName = `${nationalityName.replace(/\s/g, '')}En${countryName.replace(/\s/g, '')}`;
+
+    // ÉTAPE 3: Mettre à jour la table `public.users`
+    const { data: updatedProfile, error: updateError } = await supabase
       .from('users')
-      .insert({
-        id: newUser.id,
+      .update({
         phone_number: phoneNumber,
         country_code: countryCode,
         country_name: countryName,
         nationality: nationality,
         nationality_name: nationalityName,
-        community: community,
+        community: finalCommunityName,
         pseudo: pseudo,
-        email: email,
-        avatar_url: avatar, // L'URL de l'avatar (ex: Cloudinary) sera gérée côté client
+        email: email, // On met à jour l'email ici aussi
+        is_verified: true // L'utilisateur a complété son profil
       })
-      .select()
-      .single();
+      .eq('id', authUser.id)
+      .select() // On demande à Supabase de retourner la ligne mise à jour
+      .single(); // Cette fois, ça DOIT fonctionner.
 
-    if (profileError) throw profileError;
+    if (updateError) throw updateError;
 
-    // ✅ Générer un token de session final et permanent pour l'utilisateur créé
+    if (!updatedProfile) {
+        throw new Error("Impossible de retrouver l'utilisateur après la mise à jour.");
+    }
+
+    // ÉTAPE 4: Générer le token de session final
     const finalToken = jwt.sign(
-      { userId: newUser.id, email: newUser.email }, // Contenu du token
+      { userId: updatedProfile.id, email: updatedProfile.email },
       process.env.JWT_SECRET!,
-      { expiresIn: '30d' } // Expire dans 30 jours
+      { expiresIn: '30d' }
     );
 
-    res.status(201).json({ success: true, user: profileData, token: finalToken });
+    res.status(201).json({ success: true, user: updatedProfile, token: finalToken });
+
   } catch (error: any) {
     console.error("Erreur lors de la finalisation du profil:", error);
-    res.status(500).json({ success: false, error: error.message });
+    const errorMessage = error.message || 'Erreur interne du serveur lors de la création du profil.';
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+      details: error.details // Ajoutons les détails pour le débogage
+    });
   }
 };

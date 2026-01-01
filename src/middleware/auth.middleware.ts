@@ -8,36 +8,29 @@ import jwt from 'jsonwebtoken';
  * et attache l'ID de l'utilisateur à l'objet `req` pour les prochains middlewares/contrôleurs.
  */
 export const protect = async (req: Request, res: Response, next: NextFunction) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ success: false, error: 'Non autorisé: Token manquant ou malformé.' });
-    }
+    let token;
 
-    const token = authHeader.split(' ')[1];
-
-    // Essayer de valider avec Supabase (pour les sessions établies)
-    const { data: { user: supabaseUser }, error: supabaseError } = await supabase.auth.getUser(token);
-
-    if (supabaseUser) {
-        // @ts-ignore
-        req.user = { userId: supabaseUser.id };
-        return next();
-    }
-
-    // Si Supabase échoue, essayer de valider comme un token temporaire
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { phoneNumber: string };
-        if (decoded.phoneNumber) {
+        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            token = req.headers.authorization.split(' ')[1];
+
+            // On valide TOUS nos tokens (temporaires ou finaux) avec notre secret JWT.
+            const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { phoneNumber?: string, userId?: string, email?: string };
+            
+            // Attacher le payload décodé directement à req.user
             // @ts-ignore
-            req.user = { phoneNumber: decoded.phoneNumber };
+            req.user = decoded;
+            
             return next();
         }
+
+        if (!token) {
+            return res.status(401).json({ success: false, error: 'Non autorisé, pas de token' });
+        }
     } catch (jwtError) {
-        // Si les deux échouent, le token est invalide
+        // Si la vérification JWT échoue, le token est invalide ou expiré.
         return res.status(401).json({ success: false, error: 'Non autorisé: Token invalide ou expiré.' });
     }
-
-    return res.status(401).json({ success: false, error: 'Non autorisé: Token invalide.' });
 };
 
 /**

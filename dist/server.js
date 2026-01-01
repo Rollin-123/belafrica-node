@@ -18,6 +18,7 @@ const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
 // ✅ Import du service Telegram
 const telegram_service_1 = require("./services/telegram.service");
 const app_controller_1 = require("./controllers/app.controller");
+const messaging_routes_1 = __importDefault(require("./routes/messaging.routes"));
 // Charger les variables d'environnement
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -33,8 +34,8 @@ app.use((0, cors_1.default)({
     ],
     credentials: true
 }));
-app.use(express_1.default.json({ limit: '10mb' }));
-app.use(express_1.default.urlencoded({ extended: true }));
+app.use(express_1.default.json({ limit: '10mb' })); // ✅ Augmenter la limite pour le JSON (pour les avatars en base64)
+app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' })); // ✅ Augmenter aussi pour les formulaires URL-encoded
 // Rate limiting
 const limiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000,
@@ -54,6 +55,7 @@ app.use('/api/auth', auth_routes_1.default);
 app.use('/api/debug', debug_routes_1.default);
 app.use('/api/posts', post_routes_1.default);
 app.use('/api/admin', admin_routes_1.default);
+app.use('/api/messaging', messaging_routes_1.default);
 // ✅ ROUTE: Health check
 app.get('/api/health', async (req, res) => {
     try {

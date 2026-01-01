@@ -16,6 +16,7 @@ import adminRoutes from './routes/admin.routes';
 import { initializeTelegramBot } from './services/telegram.service';
 
 import { getAppConstants } from './controllers/app.controller';
+import messagingRoutes from './routes/messaging.routes';
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -34,8 +35,8 @@ app.use(cors({
   ],
   credentials: true
 }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' })); // ✅ Augmenter la limite pour le JSON (pour les avatars en base64)
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // ✅ Augmenter aussi pour les formulaires URL-encoded
 
 // Rate limiting
 const limiter = rateLimit({
@@ -59,6 +60,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/messaging', messagingRoutes);
 
 // ✅ ROUTE: Health check
 app.get('/api/health', async (req, res) => {

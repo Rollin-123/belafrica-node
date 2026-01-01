@@ -89,7 +89,8 @@ const verifyOtp = async (req, res) => {
         // 3. Supprimer le code pour qu'il ne soit pas réutilisé
         await supabase_1.supabase.from('otps').delete().eq('id', otpData.id);
         // 4. ✅ Créer un token JWT temporaire pour autoriser la prochaine étape
-        const tempToken = jsonwebtoken_1.default.sign({ phoneNumber: phoneNumber }, process.env.JWT_SECRET, { expiresIn: '15m' });
+        const tempToken = jsonwebtoken_1.default.sign({ phoneNumber: phoneNumber }, process.env.JWT_SECRET, // ✅ CORRECTION: Utiliser le secret JWT standard
+        { expiresIn: '15m' });
         res.status(200).json({
             success: true,
             message: 'Code vérifié avec succès.',
@@ -105,50 +106,83 @@ exports.verifyOtp = verifyOtp;
 const completeProfile = async (req, res) => {
     // @ts-ignore
     const phoneNumber = req.user?.phoneNumber;
-    const { countryCode, countryName, nationality, nationalityName, community, pseudo, email, avatar } = req.body;
+    const { countryCode, countryName, nationality, nationalityName, pseudo, email, avatar } = req.body;
     if (!phoneNumber) {
         return res.status(401).json({ success: false, error: 'Token invalide ou expiré.' });
     }
-    if (!pseudo) {
-        return res.status(400).json({ success: false, error: 'Le pseudo est requis.' });
+    if (!pseudo || !countryName || !nationalityName) {
+        return res.status(400).json({ success: false, error: 'Le pseudo, le pays et la nationalité sont requis.' });
     }
     try {
-        // Créer l'utilisateur dans Supabase Auth et dans la table 'users'
-        const { data: authData, error: authError } = await supabase_1.supabase.auth.admin.createUser({
+        let authUser;
+        // ÉTAPE 1 & 2: Tenter de créer l'utilisateur. S'il existe déjà, le récupérer.
+        const { data: newAuthData, error: authError } = await supabase_1.supabase.auth.admin.createUser({
             phone: phoneNumber,
             phone_confirm: true,
-            email: email,
+            email: email, // L'email est optionnel ici, il sera mis à jour plus tard
         });
-        if (authError)
-            throw authError;
-        const newUser = authData.user;
-        const { data: profileData, error: profileError } = await supabase_1.supabase
+        if (authError) {
+            // Si l'erreur indique que l'utilisateur existe déjà
+            if (authError.message.includes('already exists')) {
+                console.log('Utilisateur existant détecté, récupération des informations...');
+                // On récupère l'utilisateur existant par son numéro de téléphone.
+                // Note: listUsers ne filtre pas, on doit trouver le bon dans la liste.
+                // C'est une opération coûteuse, mais nécessaire dans ce cas de figure.
+                // Pour une app à grande échelle, une autre stratégie serait nécessaire.
+                const { data: { users }, error: listError } = await supabase_1.supabase.auth.admin.listUsers();
+                if (listError)
+                    throw listError;
+                authUser = users.find(u => u.phone === phoneNumber);
+            }
+            else {
+                // Une autre erreur s'est produite lors de la création
+                throw authError;
+            }
+        }
+        else {
+            // La création a réussi, c'est un nouvel utilisateur
+            authUser = newAuthData.user;
+        }
+        if (!authUser) {
+            throw new Error("Impossible de créer ou de trouver l'utilisateur d'authentification.");
+        }
+        // Le trigger `handle_new_user` a déjà (ou va) créer une ligne dans `public.users`.
+        // Nous allons maintenant mettre à jour cette ligne.
+        const finalCommunityName = `${nationalityName.replace(/\s/g, '')}En${countryName.replace(/\s/g, '')}`;
+        // ÉTAPE 3: Mettre à jour la table `public.users`
+        const { data: updatedProfile, error: updateError } = await supabase_1.supabase
             .from('users')
-            .insert({
-            id: newUser.id,
+            .update({
             phone_number: phoneNumber,
             country_code: countryCode,
             country_name: countryName,
             nationality: nationality,
             nationality_name: nationalityName,
-            community: community,
+            community: finalCommunityName,
             pseudo: pseudo,
-            email: email,
-            avatar_url: avatar, // L'URL de l'avatar (ex: Cloudinary) sera gérée côté client
+            email: email, // On met à jour l'email ici aussi
+            is_verified: true // L'utilisateur a complété son profil
         })
-            .select()
-            .single();
-        if (profileError)
-            throw profileError;
-        // ✅ Générer un token de session final et permanent pour l'utilisateur créé
-        const finalToken = jsonwebtoken_1.default.sign({ userId: newUser.id, email: newUser.email }, // Contenu du token
-        process.env.JWT_SECRET, { expiresIn: '30d' } // Expire dans 30 jours
-        );
-        res.status(201).json({ success: true, user: profileData, token: finalToken });
+            .eq('id', authUser.id)
+            .select() // On demande à Supabase de retourner la ligne mise à jour
+            .single(); // Cette fois, ça DOIT fonctionner.
+        if (updateError)
+            throw updateError;
+        if (!updatedProfile) {
+            throw new Error("Impossible de retrouver l'utilisateur après la mise à jour.");
+        }
+        // ÉTAPE 4: Générer le token de session final
+        const finalToken = jsonwebtoken_1.default.sign({ userId: updatedProfile.id, email: updatedProfile.email }, process.env.JWT_SECRET, { expiresIn: '30d' });
+        res.status(201).json({ success: true, user: updatedProfile, token: finalToken });
     }
     catch (error) {
         console.error("Erreur lors de la finalisation du profil:", error);
-        res.status(500).json({ success: false, error: error.message });
+        const errorMessage = error.message || 'Erreur interne du serveur lors de la création du profil.';
+        res.status(500).json({
+            success: false,
+            error: errorMessage,
+            details: error.details // Ajoutons les détails pour le débogage
+        });
     }
 };
 exports.completeProfile = completeProfile;

@@ -48,5 +48,4 @@ router.get('/group/:communityId', protect, (req, res) => {
     group: null
   });
 });
-
 export default router;
