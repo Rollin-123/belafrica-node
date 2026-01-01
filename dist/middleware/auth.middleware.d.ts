@@ -4,10 +4,11 @@ import { Request, Response, NextFunction } from 'express';
  * Il récupère le token de l'en-tête 'Authorization', le valide avec Supabase,
  * et attache l'ID de l'utilisateur à l'objet `req` pour les prochains middlewares/contrôleurs.
  */
-export declare const protect: (req: Request, res: Response, next: NextFunction) => Promise<void | Response<any, Record<string, any>>>;
+export declare const protect: (req: Request, res: Response, next: NextFunction) => Promise<Response<any, Record<string, any>> | undefined>;
+export declare const protectTemp: (req: Request, res: Response, next: NextFunction) => void;
 /**
  * Middleware pour vérifier si l'utilisateur authentifié est un administrateur (simple ou super).
- * Doit être utilisé APRÈS le middleware `protect`.
+ * Doit être utilisé APRÈS le middleware `protect` qui attache l'objet utilisateur.
  */
 export declare const isAdmin: (req: Request, res: Response, next: NextFunction) => Promise<Response<any, Record<string, any>> | undefined>;
 /**

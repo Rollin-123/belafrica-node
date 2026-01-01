@@ -25,13 +25,10 @@ const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000; // Utiliser le port 3000 en local
 // ✅ MIDDLEWARES
 app.use((0, helmet_1.default)());
+// ✅ CORRECTION: Utiliser la variable d'environnement pour CORS
 app.use((0, cors_1.default)({
-    origin: [
-        'http://localhost:4200',
-        'https://belafrica-version1.netlify.app',
-        'https://belafrica.netlify.app',
-        'https://*.netlify.app'
-    ],
+    // La variable d'environnement peut contenir plusieurs URLs séparées par une virgule
+    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : false,
     credentials: true
 }));
 app.use(express_1.default.json({ limit: '10mb' })); // ✅ Augmenter la limite pour le JSON (pour les avatars en base64)
