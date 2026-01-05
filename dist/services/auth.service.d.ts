@@ -20,7 +20,14 @@ export declare class AuthService {
      * Empêche le renvoi multiple du code avec le même lien.
      */
     markOTPSent(token: string): Promise<boolean>;
-    verifyOTP(phoneNumber: string, code: string): Promise<boolean>;
-    createUser(userData: any): Promise<any>;
+    /**
+     * Vérifie un OTP et le marque comme utilisé.
+     * @returns Les données de l'OTP si valide, sinon null.
+     */
+    verifyOTP(phoneNumber: string, code: string): Promise<any | null>;
+    /**
+     * Crée ou met à jour un utilisateur dans la base de données.
+     */
+    upsertUser(userData: any): Promise<any>;
 }
 //# sourceMappingURL=auth.service.d.ts.map

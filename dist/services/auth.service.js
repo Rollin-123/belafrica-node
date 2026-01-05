@@ -102,6 +102,10 @@ class AuthService {
             return false;
         }
     }
+    /**
+     * Vérifie un OTP et le marque comme utilisé.
+     * @returns Les données de l'OTP si valide, sinon null.
+     */
     async verifyOTP(phoneNumber, code) {
         try {
             const { data, error } = await supabase
@@ -109,41 +113,46 @@ class AuthService {
                 .select('*')
                 .eq('phone_number', phoneNumber)
                 .eq('code', code)
-                .eq('verified', false)
-                .gt('expires_at', new Date().toISOString())
+                .eq('verified', false) // Doit ne pas être déjà vérifié
+                .gt('expires_at', new Date().toISOString()) // Doit ne pas être expiré
                 .single();
             if (error) {
-                if (error.code === 'PGRST116') {
-                    return false; // Aucun OTP valide trouvé
-                }
-                throw error;
+                // PGRST116 = 0 ligne trouvée, ce qui est normal pour un code invalide/expiré.
+                if (error.code !== 'PGRST116')
+                    throw error;
+                return null;
             }
-            // Marquer comme vérifié
+            // Marquer comme vérifié pour empêcher la réutilisation
             await supabase
                 .from('otp_codes')
                 .update({ verified: true })
                 .eq('id', data.id);
-            return true;
-        }
-        catch (error) {
-            console.error('❌ Erreur vérification OTP:', error);
-            return false;
-        }
-    }
-    async createUser(userData) {
-        try {
-            const { data, error } = await supabase
-                .from('users')
-                .insert([userData])
-                .select()
-                .single();
-            if (error)
-                throw error;
             return data;
         }
         catch (error) {
-            console.error('❌ Erreur création utilisateur:', error);
-            throw new Error(`Erreur création utilisateur: ${error.message}`);
+            console.error('❌ Erreur vérification OTP dans le service:', error);
+            return null;
+        }
+    }
+    /**
+     * Crée ou met à jour un utilisateur dans la base de données.
+     */
+    async upsertUser(userData) {
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .upsert(userData, { onConflict: 'phone_number' })
+                .select()
+                .single();
+            if (error) {
+                console.error('❌ Erreur Supabase upsertUser:', error); // Log détaillé de l'erreur Supabase
+                throw error;
+            }
+            return data;
+        }
+        catch (error) {
+            // Cette erreur sera maintenant plus générique pour le client, mais détaillée dans les logs serveur.
+            throw new Error(`Erreur serveur lors de la mise à jour du profil.`);
         }
     }
 }

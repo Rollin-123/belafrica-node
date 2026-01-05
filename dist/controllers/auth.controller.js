@@ -7,7 +7,7 @@ exports.completeProfile = exports.verifyOtp = exports.requestOtp = void 0;
 const supabase_1 = require("../utils/supabase");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
-const uuid_1 = require("uuid");
+const auth_service_1 = require("../services/auth.service");
 // Fonction pour générer un code OTP simple
 const generateOtpCode = (length = 6) => {
     const digits = '0123456789';
@@ -15,6 +15,20 @@ const generateOtpCode = (length = 6) => {
     for (let i = 0; i < length; i++)
         code += digits[Math.floor(Math.random() * 10)];
     return code;
+};
+const authService = new auth_service_1.AuthService();
+// Map des indicatifs téléphoniques vers les codes pays ISO 3166-1 alpha-2
+const phonePrefixToCountryISO = {
+    '+49': 'DE', // Allemagne
+    '+32': 'BE', // Belgique
+    '+375': 'BY', // Biélorussie
+    '+1': 'CA', // Canada (et US)
+    '+34': 'ES', // Espagne
+    '+33': 'FR', // France
+    '+39': 'IT', // Italie
+    '+41': 'CH', // Suisse
+    '+44': 'GB', // Royaume-Uni
+    '+7': 'RU' // Russie
 };
 /**
  * Demande un code OTP (One-Time Password) via Supabase Auth.
@@ -27,25 +41,30 @@ exports.requestOtp = (0, express_async_handler_1.default)(async (req, res) => {
         res.status(400);
         throw new Error('Le numéro de téléphone et le code pays sont requis.');
     }
+    // =================================================
+    // ✅ NOUVELLE LOGIQUE DE GÉO-VALIDATION
+    // =================================================
+    // Cette vérification est active sauf si GEO_BYPASS_IN_DEV est 'true'
+    if (process.env.GEO_BYPASS_IN_DEV !== 'true') {
+        // 1. Détecter le pays depuis l'IP (Render fournit cet en-tête)
+        const detectedCountryISO = req.headers['x-vercel-ip-country']; // ex: 'FR', 'BY'
+        // 2. Déterminer le pays depuis l'indicatif téléphonique
+        const phoneCountryISO = phonePrefixToCountryISO[countryCode];
+        // 3. Comparer les deux. Si l'IP est détectée mais ne correspond pas au pays du numéro.
+        if (detectedCountryISO && phoneCountryISO && detectedCountryISO !== phoneCountryISO) {
+            console.warn(`⚠️ Tentative de connexion bloquée : IP de ${detectedCountryISO}, mais numéro de ${phoneCountryISO}.`);
+            res.status(403); // 403 Forbidden est le code HTTP approprié
+            throw new Error(`Votre localisation détectée (${detectedCountryISO}) ne correspond pas au pays de votre numéro de téléphone (${phoneCountryISO}). ` +
+                `Pour des raisons de sécurité, veuillez utiliser un numéro de téléphone du pays où vous vous trouvez actuellement.`);
+        }
+    }
     // 1. Générer le code et le token
     const otpCode = generateOtpCode();
-    const token = (0, uuid_1.v4)(); // Token unique pour le deep link
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Expire dans 10 minutes
-    // 2. Sauvegarder l'OTP et le token dans la table 'otp_codes' (et non 'otps')
-    const { data: otpData, error: otpError } = await supabase_1.supabase
-        .from('otp_codes')
-        .insert({
-        phone_number: fullPhoneNumber,
-        code: otpCode,
-        token: token,
-        expires_at: expiresAt.toISOString(),
-        bot_sent: false, // Initialement, le bot n'a pas envoyé le code
-    })
-        .select()
-        .single();
-    if (otpError || !otpData) {
-        console.error("Erreur de sauvegarde OTP avec token:", otpError);
-        throw new Error("Impossible de sauvegarder le code de vérification.");
+    // 2. Sauvegarder l'OTP et le token via le service
+    const { token } = await authService.saveOTPWithToken(fullPhoneNumber, otpCode);
+    if (!token) {
+        // Ce cas ne devrait pas être atteint car le service lève une exception en cas d'échec.
+        throw new Error("Impossible de générer un token de vérification.");
     }
     // 3. Créer les liens de deep linking
     const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'Belafrica_bot';
@@ -73,24 +92,12 @@ exports.verifyOtp = (0, express_async_handler_1.default)(async (req, res) => {
         res.status(400);
         throw new Error('Numéro de téléphone et code OTP requis.');
     }
-    // 1. Vérifier l'OTP dans la table 'otp_codes' en s'assurant qu'il est valide, non expiré et non vérifié.
-    const { data: otpData, error: otpError } = await supabase_1.supabase
-        .from('otp_codes')
-        .select('*')
-        .eq('phone_number', phoneNumber)
-        .eq('code', code)
-        .eq('verified', false) // ✅ SÉCURITÉ : S'assurer que le code n'a pas déjà été utilisé
-        .gt('expires_at', new Date().toISOString()) // ✅ SÉCURITÉ : S'assurer que le code n'est pas expiré
-        .single();
-    if (otpError || !otpData) {
+    // 1. Vérifier l'OTP via le service
+    const otpData = await authService.verifyOTP(phoneNumber, code);
+    if (!otpData) {
         res.status(401);
-        // PGRST116 est l'erreur pour "aucune ligne trouvée", ce qui est le cas attendu pour un code invalide/expiré.
-        if (otpError && otpError.code !== 'PGRST116')
-            console.error('Erreur de vérification OTP Supabase:', otpError);
         throw new Error('Code OTP invalide ou expiré.');
     }
-    // 2. Marquer l'OTP comme vérifié pour qu'il ne puisse plus être utilisé
-    await supabase_1.supabase.from('otp_codes').update({ verified: true }).eq('id', otpData.id);
     // 3. Check if user already exists and is verified
     const { data: existingUser } = await supabase_1.supabase
         .from('users')
@@ -134,10 +141,8 @@ exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) 
         res.status(400);
         throw new Error('Le pseudo, le pays, la nationalité et la communauté sont requis.');
     }
-    // 4. Find or update the user in the database using `upsert`
-    const { data: finalUser, error: upsertError } = await supabase_1.supabase
-        .from('users')
-        .upsert({
+    // 4. Créer ou mettre à jour l'utilisateur via le service
+    const finalUser = await authService.upsertUser({
         phone_number: phoneNumber, // This is the conflict key
         country_code: countryCode,
         country_name: countryName,
@@ -149,18 +154,9 @@ exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) 
         avatar_url: avatar,
         is_verified: true, // Mark the user as fully verified
         updated_at: new Date().toISOString(),
-    })
-        .eq('phone_number', phoneNumber) // Ensure we update the correct user
-        .select()
-        .single();
-    if (upsertError) {
-        console.error("Erreur lors de la finalisation du profil (upsert):", upsertError);
-        res.status(500);
-        throw new Error('Erreur serveur lors de la finalisation du profil.');
-    }
+    });
     if (!finalUser) {
-        res.status(404);
-        throw new Error("Impossible de retrouver l'utilisateur après la mise à jour.");
+        throw new Error("Impossible de créer ou de retrouver l'utilisateur après la mise à jour.");
     }
     // 5. Generate the final, permanent session token
     const finalToken = jsonwebtoken_1.default.sign({ userId: finalUser.id }, // Payload for the permanent token
