@@ -41,7 +41,6 @@ export class SupabaseService {
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL!;
     const supabaseKey = process.env.SUPABASE_SERVICE_KEY!;
-    
     this.client = createClient(supabaseUrl, supabaseKey);
   }
 

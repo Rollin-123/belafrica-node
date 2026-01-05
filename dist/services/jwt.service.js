@@ -11,7 +11,6 @@ class JWTService {
     constructor() {
         this.secret = process.env.JWT_SECRET || 'belafrica_default_secret';
     }
-    // ✅ GÉNÉRER un token
     generateToken(payload) {
         const tokenPayload = {
             ...payload,

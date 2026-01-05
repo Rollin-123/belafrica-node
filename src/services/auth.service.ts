@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { config } from '../config/environments';
+import { v4 as uuidv4 } from 'uuid';
 
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey);
 
+//@ts-ignore
 export class AuthService {
   async findUserByPhone(phoneNumber: string) {
     try {
@@ -11,7 +13,6 @@ export class AuthService {
         .select('*')
         .eq('phone_number', phoneNumber)
         .single();
-
       if (error && error.code !== 'PGRST116') throw error;
       return data;
     } catch (error) {
@@ -20,23 +21,83 @@ export class AuthService {
     }
   }
 
-  async saveOTP(phoneNumber: string, code: string) {
+  /**
+   * Sauvegarde un OTP avec un token de deep linking unique.
+   * @param phoneNumber Le numéro de téléphone complet.
+   * @param code Le code OTP généré.
+   * @returns Un objet contenant le token et l'ID de l'OTP.
+   */
+  async saveOTPWithToken(phoneNumber: string, code: string): Promise<{token: string, otpId: string}> {
     try {
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      const token = uuidv4(); // Générer un token unique
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('otp_codes')
         .insert([{
           phone_number: phoneNumber,
           code,
+          token: token,
           expires_at: expiresAt.toISOString(),
-          created_at: new Date().toISOString()
-        }]);
+          created_at: new Date().toISOString(),
+          verified: false,
+          bot_sent: false
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { token: token, otpId: data.id };
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde OTP avec token:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Récupère un OTP non vérifié et non expiré par son token.
+   * Utilisé par le bot Telegram quand un utilisateur clique sur le lien.
+   */
+  async getOTPByToken(token: string) {
+    try {
+      const { data, error } = await supabase
+        .from('otp_codes')
+        .select('*')
+        .eq('token', token)
+        .eq('verified', false)
+        .gt('expires_at', new Date().toISOString()) // gt = greater than
+        .single();
+
+      if (error) {
+        // 'PGRST116' est le code d'erreur de PostgREST pour "0 rows returned"
+        // Ce n'est pas une vraie erreur, juste que le token est invalide ou expiré.
+        if (error.code === 'PGRST116') {
+          return null; 
+        }
+        throw error;
+      }
+      return data;
+    } catch (error) {
+      console.error('❌ Erreur récupération OTP par token:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Marque un OTP comme ayant été envoyé par le bot.
+   * Empêche le renvoi multiple du code avec le même lien.
+   */
+  async markOTPSent(token: string) {
+    try {
+      const { error } = await supabase
+        .from('otp_codes')
+        .update({ bot_sent: true })
+        .eq('token', token);
 
       if (error) throw error;
       return true;
     } catch (error) {
-      console.error('❌ Erreur sauvegarde OTP:', error);
+      console.error('❌ Erreur marquage OTP envoyé:', error);
       return false;
     }
   }

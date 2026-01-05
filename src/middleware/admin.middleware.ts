@@ -12,6 +12,7 @@ export async function adminMiddleware(req: Request, res: Response, next: NextFun
       });
     }
 
+    
     const supabase = getSupabaseService();
     const user = await supabase.getUserById(userId);
 

@@ -5,6 +5,7 @@ import { protect } from '../middleware/auth.middleware';
 const router = Router();
 const messagesController = new MessagesController();
 
+
 router.post('/send', protect, (req, res) => {
   messagesController.sendMessage(req, res);
 });

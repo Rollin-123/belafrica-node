@@ -11,6 +11,5 @@ if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Variables Supabase manquantes. Assurez-vous que SUPABASE_URL et SUPABASE_SERVICE_KEY sont définies dans votre .env');
   process.exit(1);
 }
-
 export const supabase = createClient(supabaseUrl, supabaseKey);
 console.log('✅ Supabase connecté');

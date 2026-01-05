@@ -141,8 +141,6 @@ export const validateAdminCode = async (req: Request, res: Response) => {
     const existingPermissions = new Set(user.admin_permissions || []);
     codeData.permissions.forEach((p: string) => existingPermissions.add(p));
     const newPermissions = Array.from(existingPermissions);
-
-    // Déterminer le nouveau niveau d'admin
     const newAdminLevel = newPermissions.includes('post_international') ? 'international' : 'national';
 
     // ✅ Mettre à jour l'utilisateur

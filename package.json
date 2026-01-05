@@ -36,6 +36,7 @@
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.3",
     "node-telegram-bot-api": "^0.67.0",
+    "uuid": "^13.0.0",
     "winston": "^3.11.0",
     "zod": "^4.2.1"
   },
@@ -45,6 +46,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.5.0",
     "@types/node-telegram-bot-api": "^0.64.13",
+    "@types/uuid": "^11.0.0",
     "@typescript-eslint/eslint-plugin": "^6.7.4",
     "@typescript-eslint/parser": "^6.7.4",
     "eslint": "^8.51.0",

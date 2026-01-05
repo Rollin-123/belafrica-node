@@ -5,20 +5,14 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import { supabase } from './utils/supabase';
-
-// Import des routeurs
 import authRoutes from './routes/auth.routes';
 import debugRoutes from './routes/debug.routes';
 import postRoutes from './routes/post.routes';
 import adminRoutes from './routes/admin.routes';
-
-// ✅ Import du service Telegram
 import { initializeTelegramBot } from './services/telegram.service';
-
 import { getAppConstants } from './controllers/app.controller';
 import messagingRoutes from './routes/messaging.routes';
 
-// Charger les variables d'environnement
 dotenv.config();
 
 const app = express();

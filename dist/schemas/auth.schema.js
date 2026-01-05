@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.completeProfileSchema = exports.verifyOtpSchema = exports.requestOtpSchema = void 0;
-// src/schemas/auth.schema.ts
 const zod_1 = require("zod");
 exports.requestOtpSchema = zod_1.z.object({
     body: zod_1.z.object({

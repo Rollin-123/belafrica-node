@@ -10,16 +10,13 @@ const helmet_1 = __importDefault(require("helmet"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const supabase_1 = require("./utils/supabase");
-// Import des routeurs
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const debug_routes_1 = __importDefault(require("./routes/debug.routes"));
 const post_routes_1 = __importDefault(require("./routes/post.routes"));
 const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
-// ✅ Import du service Telegram
 const telegram_service_1 = require("./services/telegram.service");
 const app_controller_1 = require("./controllers/app.controller");
 const messaging_routes_1 = __importDefault(require("./routes/messaging.routes"));
-// Charger les variables d'environnement
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000; // Utiliser le port 3000 en local

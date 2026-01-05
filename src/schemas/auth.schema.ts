@@ -1,4 +1,3 @@
-// src/schemas/auth.schema.ts
 import { z } from 'zod';
 
 export const requestOtpSchema = z.object({

@@ -16,7 +16,6 @@ export class JWTService {
     this.secret = process.env.JWT_SECRET || 'belafrica_default_secret';
   }
 
-  // ✅ GÉNÉRER un token
   generateToken(payload: JWTPayload): string {
     const tokenPayload = {
       ...payload,

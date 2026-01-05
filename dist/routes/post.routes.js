@@ -6,10 +6,8 @@ const validate_middleware_1 = require("../middleware/validate.middleware");
 const post_schema_1 = require("../schemas/post.schema");
 const posts_controller_1 = require("../controllers/posts.controller");
 const router = (0, express_1.Router)();
-// Tout le monde peut lire les posts, il faut juste être connecté
 router.get('/national', auth_middleware_1.protect, posts_controller_1.postsController.getNationalPosts);
 router.get('/international', auth_middleware_1.protect, posts_controller_1.postsController.getInternationalPosts);
-// ✅ RÈGLE CORRIGÉE : Seuls les administrateurs peuvent créer ou supprimer des posts.
 router.post('/', auth_middleware_1.protect, auth_middleware_1.isAdmin, (0, validate_middleware_1.validate)(post_schema_1.createPostSchema), posts_controller_1.postsController.createPost);
 router.delete('/:id', auth_middleware_1.protect, auth_middleware_1.isAdmin, posts_controller_1.postsController.deletePost);
 exports.default = router;

@@ -1,10 +1,9 @@
-// src/services/encryption.service.ts
 import crypto from 'crypto';
 
 export class EncryptionService {
   private algorithm = 'aes-256-gcm';
   private keyLength = 32;
-  private ivLength = 12; // GCM recommande 12 bytes
+  private ivLength = 12; 
   private saltLength = 16;
   private tagLength = 16;
   private iterations = 100000;

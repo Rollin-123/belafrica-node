@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodObject, ZodRawShape } from 'zod';
 
+
 export const validate = (schema: ZodObject<ZodRawShape>) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {

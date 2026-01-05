@@ -24,7 +24,6 @@ export function getClientIP(req: any): string {
     return forwardedFor.split(',')[0].trim();
   }
   
-  // 📌 PRIORITÉ 2 : x-real-ip
   const realIP = req.headers['x-real-ip'];
   if (realIP) {
     if (Array.isArray(realIP)) {

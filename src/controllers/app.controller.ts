@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { APP_CONSTANTS } from '../utils/constants';
 
+
 /**
  * Expose les constantes publiques de l'application au frontend.
  */

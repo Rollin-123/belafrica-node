@@ -11,7 +11,6 @@ export class UserController {
       if (!userId) {
         return res.status(401).json({ error: 'Non autorisé' });
       }
-
       const supabase = getSupabaseService();
       const user = await supabase.getUserById(userId);
 

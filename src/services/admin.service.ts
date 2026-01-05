@@ -13,7 +13,7 @@ export class AdminService {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
       }
 
-      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 heures
+      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); 
 
       const { data, error } = await supabase
         .from('admin_codes')

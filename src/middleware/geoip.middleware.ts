@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
 import { APP_CONSTANTS } from '../utils/constants';
 
+
 /**
  * Middleware pour vérifier que l'IP de l'utilisateur correspond au pays attendu.
  * Le pays attendu est passé en paramètre dans le corps de la requête.

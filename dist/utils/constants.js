@@ -5,7 +5,6 @@ exports.africanCountries = exports.countryNames = exports.countryMapping = expor
 exports.APP_CONSTANTS = {
     APP_NAME: 'BELAFRICA',
     VERSION: '1.0.0',
-    // Durées d'expiration
     OTP_EXPIRY_MINUTES: 10,
     POST_NATIONAL_EXPIRY_HOURS: 48,
     POST_INTERNATIONAL_EXPIRY_HOURS: 72,

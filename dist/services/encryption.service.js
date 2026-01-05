@@ -5,13 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EncryptionService = void 0;
 exports.getEncryptionService = getEncryptionService;
-// src/services/encryption.service.ts
 const crypto_1 = __importDefault(require("crypto"));
 class EncryptionService {
     constructor() {
         this.algorithm = 'aes-256-gcm';
         this.keyLength = 32;
-        this.ivLength = 12; // GCM recommande 12 bytes
+        this.ivLength = 12;
         this.saltLength = 16;
         this.tagLength = 16;
         this.iterations = 100000;

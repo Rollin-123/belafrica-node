@@ -4,7 +4,6 @@ import path from 'path';
 // Charger le fichier .env selon l'environnement
 const env = process.env.NODE_ENV || 'development';
 const envFile = `.env.${env}`;
-
 dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 
 export const config = {

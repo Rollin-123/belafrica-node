@@ -1,4 +1,3 @@
-// src/schemas/post.schema.ts - VERSION CORRIGÉE
 import { z } from 'zod';
 
 export const createPostSchema = z.object({

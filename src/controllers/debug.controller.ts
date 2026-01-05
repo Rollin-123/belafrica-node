@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import { detectCountryByIP } from '../utils/geolocation';
 
+
 export const getGeoDebug = async (req: Request, res: Response) => {
   try {
     const ip = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';

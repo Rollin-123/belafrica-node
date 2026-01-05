@@ -2,6 +2,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { getSupabaseService } from '../services/supabase.factory';
 
+
 export class MessagesController {
   // getConversations(arg0: string, authMiddleware: (req: Request, res: Response, next: NextFunction) => Promise<Response<any, Record<string, any>> | undefined>, getConversations: any) {
   //     throw new Error('Method not implemented.');

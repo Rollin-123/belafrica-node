@@ -12,7 +12,6 @@ class GeolocationService {
         this.ipApiUrl = process.env.IP_API_URL || 'http://ip-api.com/json';
         this.ipifyUrl = process.env.IPIFY_URL || 'https://api.ipify.org?format=json';
     }
-    // ✅ DÉTECTER la localisation par IP (VRAI SERVICE)
     async detectLocationByIP(ip) {
         try {
             // Récupérer l'IP si non fournie

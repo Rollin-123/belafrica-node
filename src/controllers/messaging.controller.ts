@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { supabase } from '../utils/supabase';
 
+
 /**
  * ✅ Récupère toutes les conversations de l'utilisateur authentifié.
  */

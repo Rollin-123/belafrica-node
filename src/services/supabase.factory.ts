@@ -7,7 +7,6 @@ export function getSupabaseService(): SupabaseService {
   if (!supabaseInstance) {
     supabaseInstance = new SupabaseService();
   }
-  
   return supabaseInstance;
 }
 

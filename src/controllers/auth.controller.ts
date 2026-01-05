@@ -3,6 +3,7 @@ import { supabase } from '../utils/supabase';
 import jwt from 'jsonwebtoken';
 import { sendTelegramMessage } from '../services/telegram.service';
 import asyncHandler from 'express-async-handler';
+import { v4 as uuidv4 } from 'uuid';
 
 // Fonction pour générer un code OTP simple
 const generateOtpCode = (length = 6): string => {
@@ -25,35 +26,46 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
     throw new Error('Le numéro de téléphone et le code pays sont requis.');
   }
 
-    // 1. Chercher le chat_id correspondant au numéro de téléphone
-    const { data: chatData, error: chatError } = await supabase
-      .from('telegram_chats')
-      .select('chat_id')
-      .eq('phone_number', fullPhoneNumber)
-      .single();
+  // 1. Générer le code et le token
+  const otpCode = generateOtpCode();
+  const token = uuidv4(); // Token unique pour le deep link
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Expire dans 10 minutes
 
-    if (chatError || !chatData) { 
-        res.status(404);
-        throw new Error("Ce numéro n'est pas encore enregistré.\n\nVeuillez d'abord interagir avec notre bot sur Telegram pour lier votre compte.\n\nLien du bot : https://t.me/Belafrica_bot");
-    }
-
-    // 2. Générer le code et le sauvegarder dans la table 'otps'
-    const otpCode = generateOtpCode();
-    const { error: otpError } = await supabase.from('otps').insert({
+  // 2. Sauvegarder l'OTP et le token dans la table 'otp_codes' (et non 'otps')
+  const { data: otpData, error: otpError } = await supabase
+    .from('otp_codes')
+    .insert({
       phone_number: fullPhoneNumber,
       code: otpCode,
-      expires_at: new Date(Date.now() + 10 * 60 * 1000) // Expire dans 10 minutes
-    });
+      token: token,
+      expires_at: expiresAt.toISOString(),
+      bot_sent: false, // Initialement, le bot n'a pas envoyé le code
+    })
+    .select()
+    .single();
 
-    if (otpError) {
-      console.error("Erreur de sauvegarde OTP:", otpError);
-      throw new Error("Impossible de sauvegarder le code de vérification.");
-    }
+  if (otpError || !otpData) {
+    console.error("Erreur de sauvegarde OTP avec token:", otpError);
+    throw new Error("Impossible de sauvegarder le code de vérification.");
+  }
 
-    // 3. Envoyer le code via Telegram
-    await sendTelegramMessage(chatData.chat_id, `Votre code de vérification pour BELAFRICA est : ${otpCode}`);
+  // 3. Créer les liens de deep linking
+  const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'Belafrica_bot';
+  const telegramLink = `https://t.me/${botUsername}?start=${token}`;
+  const mobileLink = `tg://resolve?domain=${botUsername}&start=${token}`;
 
-    res.status(200).json({ success: true, message: "Un code de vérification a été envoyé sur votre compte Telegram." });
+  // 4. Retourner une réponse riche pour le frontend
+  res.status(200).json({
+    success: true,
+    message: 'OTP généré. Cliquez sur le lien pour recevoir votre code.',
+    requiresBotStart: true, // Signal pour le frontend
+    token: token,
+    links: {
+      web: telegramLink,
+      app: mobileLink,
+      universal: telegramLink,
+    },
+  });
 });
 
 /**
@@ -66,45 +78,45 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
         res.status(400);
         throw new Error('Numéro de téléphone et code OTP requis.');
     }
-
-    // 1. Vérifier le code OTP dans la table 'otps'
+    // 1. Vérifier l'OTP dans la table 'otp_codes' en s'assurant qu'il est valide, non expiré et non vérifié.
     const { data: otpData, error: otpError } = await supabase
-      .from('otps')
+      .from('otp_codes')
       .select('*')
       .eq('phone_number', phoneNumber)
       .eq('code', code)
+      .eq('verified', false) // ✅ SÉCURITÉ : S'assurer que le code n'a pas déjà été utilisé
+      .gt('expires_at', new Date().toISOString()) // ✅ SÉCURITÉ : S'assurer que le code n'est pas expiré
       .single();
 
     if (otpError || !otpData) {
-    res.status(401);
-    throw new Error('Code OTP invalide.');
+        res.status(401);
+        // PGRST116 est l'erreur pour "aucune ligne trouvée", ce qui est le cas attendu pour un code invalide/expiré.
+        if (otpError && otpError.code !== 'PGRST116') console.error('Erreur de vérification OTP Supabase:', otpError);
+        throw new Error('Code OTP invalide ou expiré.');
     }
 
-    if (new Date(otpData.expires_at) < new Date()) {
-    res.status(401);
-    throw new Error('Code OTP expiré.');
-    }
+    // 2. Marquer l'OTP comme vérifié pour qu'il ne puisse plus être utilisé
+    await supabase.from('otp_codes').update({ verified: true }).eq('id', otpData.id);
 
-    // 2. Supprimer le code OTP pour qu'il ne puisse pas être réutilisé
-    await supabase.from('otps').delete().eq('id', otpData.id);
-
-    // 3. Vérifier si l'utilisateur existe déjà et est vérifié
+    // 3. Check if user already exists and is verified
     const { data: existingUser } = await supabase
         .from('users')
         .select('*')
         .eq('phone_number', phoneNumber)
         .single();
 
-    if (existingUser && existingUser.is_verified) { // L'utilisateur est déjà entièrement enregistré. Le connecter.
-    const token = jwt.sign({ userId: existingUser.id }, process.env.JWT_SECRET!, {
-    expiresIn: '7d',
-    });
-    res.json({
-    success: true,
-    message: 'Connexion réussie.',
-    token,
-    user: existingUser,
-    });
+    if (existingUser && existingUser.is_verified) {
+        // This user is already fully registered. Log them in.
+        const token = jwt.sign({ userId: existingUser.id }, process.env.JWT_SECRET!, {
+            expiresIn: '7d',
+        });
+        res.json({
+            success: true,
+            message: 'Connexion réussie.',
+            token,
+            user: existingUser,
+        });
+        return;
     }
 
     // 4. User is new or has an incomplete profile. Generate a temporary token with the phone number.

@@ -3,6 +3,7 @@ import { supabase } from '../utils/supabase';
 import jwt from 'jsonwebtoken';
 import asyncHandler from 'express-async-handler';
 
+
 /**
  * Middleware pour vérifier si un utilisateur est authentifié via un token JWT.
  * Il récupère le token de l'en-tête 'Authorization', le valide avec Supabase,

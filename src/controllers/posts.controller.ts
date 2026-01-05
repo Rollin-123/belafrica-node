@@ -115,7 +115,6 @@ export class PostsController {
       };
 
       const post = await supabase.createPost(postData);
-
       res.json({
         success: true,
         message: 'Post créé avec succès',

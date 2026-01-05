@@ -122,7 +122,6 @@ const validateAdminCode = async (req, res) => {
         const existingPermissions = new Set(user.admin_permissions || []);
         codeData.permissions.forEach((p) => existingPermissions.add(p));
         const newPermissions = Array.from(existingPermissions);
-        // Déterminer le nouveau niveau d'admin
         const newAdminLevel = newPermissions.includes('post_international') ? 'international' : 'national';
         // ✅ Mettre à jour l'utilisateur
         const { error: userUpdateError } = await supabase_1.supabase

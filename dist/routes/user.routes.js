@@ -8,7 +8,6 @@ Object.defineProperty(exports, "UserController", { enumerable: true, get: functi
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const router = (0, express_1.Router)();
 const userController = new user_controller_1.UserController();
-// Routes utilisateur
 router.get('/profile', auth_middleware_1.protect, userController.getProfile);
 router.put('/profile', auth_middleware_1.protect, userController.updateProfile);
 router.put('/profile/avatar', auth_middleware_1.protect, userController.updateAvatar);
