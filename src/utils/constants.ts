@@ -1,4 +1,9 @@
 // src/utils/constants.ts
+/* 
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 export const APP_CONSTANTS = {
   APP_NAME: 'BELAFRICA',
   VERSION: '1.0.0',

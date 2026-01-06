@@ -1,3 +1,8 @@
+/* 
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 import TelegramBot from 'node-telegram-bot-api';
 import { supabase } from '../utils/supabase';
 import { AuthService } from './auth.service';

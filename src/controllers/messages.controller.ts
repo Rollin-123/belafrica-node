@@ -1,12 +1,14 @@
 // src/controllers/messages.controller.ts
-import { NextFunction, Request, Response } from 'express';
+/* 
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
+import { Request, Response } from 'express';
 import { getSupabaseService } from '../services/supabase.factory';
 
 
 export class MessagesController {
-  // getConversations(arg0: string, authMiddleware: (req: Request, res: Response, next: NextFunction) => Promise<Response<any, Record<string, any>> | undefined>, getConversations: any) {
-  //     throw new Error('Method not implemented.');
-  // }
    async getConversations(req: Request, res: Response) {
     try {
       const userId = (req as any).userId;

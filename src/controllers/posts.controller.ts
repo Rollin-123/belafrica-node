@@ -1,4 +1,9 @@
 // src/controllers/posts.controller.ts
+/* 
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 import { Request, Response } from 'express';
 import { getSupabaseService } from '../services/supabase.factory';
 

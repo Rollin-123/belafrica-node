@@ -1,3 +1,10 @@
+/* 
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
+
+// src/utils/config.ts
 import dotenv from 'dotenv';
 import path from 'path';
 

@@ -1,4 +1,9 @@
 // src/routes/user.routes.ts
+/* 
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 import { Router } from 'express';
 import { UserController } from '../controllers/user.controller'; 
 import { protect } from '../middleware/auth.middleware';
