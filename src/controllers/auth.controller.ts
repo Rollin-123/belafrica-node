@@ -17,16 +17,16 @@ const authService = new AuthService();
 
 // Map des indicatifs téléphoniques vers les codes pays ISO 3166-1 alpha-2
 const phonePrefixToCountryISO: { [key: string]: string } = {
-  '+49': 'DE', // Allemagne
-  '+32': 'BE', // Belgique
-  '+375': 'BY', // Biélorussie
-  '+1': 'CA',  // Canada (et US)
-  '+34': 'ES', // Espagne
-  '+33': 'FR', // France
-  '+39': 'IT', // Italie
-  '+41': 'CH', // Suisse
-  '+44': 'GB', // Royaume-Uni
-  '+7': 'RU'  // Russie
+  '+49': 'DE',
+  '+32': 'BE', 
+  '+375': 'BY', 
+  '+1': 'CA',  
+  '+34': 'ES',
+  '+33': 'FR', 
+  '+39': 'IT', 
+  '+41': 'CH', 
+  '+44': 'GB',
+  '+7': 'RU' 
 };
 
 /**
@@ -48,7 +48,7 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
   // Cette vérification est active sauf si GEO_BYPASS_IN_DEV est 'true'
   if (process.env.GEO_BYPASS_IN_DEV !== 'true') {
     // 1. Détecter le pays depuis l'IP (Render fournit cet en-tête)
-    const detectedCountryISO = req.headers['x-vercel-ip-country'] as string; // ex: 'FR', 'BY'
+    const detectedCountryISO = req.headers['x-vercel-ip-country'] as string;
 
     // 2. Déterminer le pays depuis l'indicatif téléphonique
     const phoneCountryISO = phonePrefixToCountryISO[countryCode];
@@ -56,7 +56,7 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
     // 3. Comparer les deux. Si l'IP est détectée mais ne correspond pas au pays du numéro.
     if (detectedCountryISO && phoneCountryISO && detectedCountryISO !== phoneCountryISO) {
       console.warn(`⚠️ Tentative de connexion bloquée : IP de ${detectedCountryISO}, mais numéro de ${phoneCountryISO}.`);
-      res.status(403); // 403 Forbidden est le code HTTP approprié
+      res.status(403);
       throw new Error(
         `Votre localisation détectée (${detectedCountryISO}) ne correspond pas au pays de votre numéro de téléphone (${phoneCountryISO}). ` +
         `Pour des raisons de sécurité, veuillez utiliser un numéro de téléphone du pays où vous vous trouvez actuellement.`
@@ -84,7 +84,7 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: 'OTP généré. Cliquez sur le lien pour recevoir votre code.',
-    requiresBotStart: true, // Signal pour le frontend
+    requiresBotStart: true, 
     token: token,
     links: {
       web: telegramLink,
@@ -135,7 +135,7 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
 
     // 4. User is new or has an incomplete profile. Generate a temporary token with the phone number.
     const tempToken = jwt.sign(
-        { phoneNumber: phoneNumber, temp: true }, // Payload contains phoneNumber
+        { phoneNumber: phoneNumber, temp: true }, 
         process.env.TEMP_JWT_SECRET!,
         { expiresIn: '15m' }
     );
@@ -168,7 +168,8 @@ export const completeProfile = asyncHandler(async (req: Request, res: Response) 
 
   // 4. Créer ou mettre à jour l'utilisateur via le service
   const finalUser = await authService.upsertUser({
-    phone_number: phoneNumber, // This is the conflict key
+    id: uuidv4(), 
+    phone_number: phoneNumber, 
     country_code: countryCode,
     country_name: countryName,
     nationality: nationality,
@@ -177,7 +178,7 @@ export const completeProfile = asyncHandler(async (req: Request, res: Response) 
     pseudo: pseudo,
     email: email,
     avatar_url: avatar,
-    is_verified: true, // Mark the user as fully verified
+    is_verified: true, 
     updated_at: new Date().toISOString(),
   });
 
@@ -187,7 +188,7 @@ export const completeProfile = asyncHandler(async (req: Request, res: Response) 
 
   // 5. Generate the final, permanent session token
   const finalToken = jwt.sign(
-      { userId: finalUser.id }, // Payload for the permanent token
+      { userId: finalUser.id },
       process.env.JWT_SECRET!,
       { expiresIn: '30d' }
   );
