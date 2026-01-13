@@ -4,6 +4,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 // server.ts - VERSION CORRIGÉE ET VÉRIFIÉE
+/*
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));

@@ -4,6 +4,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.bot = exports.sendTelegramMessage = exports.initializeTelegramBot = void 0;
+/*
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 const node_telegram_bot_api_1 = __importDefault(require("node-telegram-bot-api"));
 const supabase_1 = require("../utils/supabase");
 const auth_service_1 = require("./auth.service");

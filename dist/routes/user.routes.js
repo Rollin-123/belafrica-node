@@ -2,6 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserController = void 0;
 // src/routes/user.routes.ts
+/*
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 const express_1 = require("express");
 const user_controller_1 = require("../controllers/user.controller");
 Object.defineProperty(exports, "UserController", { enumerable: true, get: function () { return user_controller_1.UserController; } });

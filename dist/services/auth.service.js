@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
+/*
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 const supabase_js_1 = require("@supabase/supabase-js");
 const environments_1 = require("../config/environments");
 const uuid_1 = require("uuid");

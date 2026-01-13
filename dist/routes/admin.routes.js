@@ -1,5 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+/*
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 const express_1 = require("express");
 const admin_controller_1 = require("../controllers/admin.controller");
 const auth_middleware_1 = require("../middleware/auth.middleware");

@@ -4,6 +4,11 @@ exports.formatPhoneNumber = formatPhoneNumber;
 exports.generateCommunity = generateCommunity;
 exports.isExpired = isExpired;
 exports.generateRandomCode = generateRandomCode;
+/*
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 function formatPhoneNumber(phone) {
     return phone.replace(/\D/g, '');
 }

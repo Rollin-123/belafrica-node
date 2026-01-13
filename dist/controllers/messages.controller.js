@@ -4,9 +4,6 @@ exports.getSupabaseService = exports.messagesController = exports.MessagesContro
 const supabase_factory_1 = require("../services/supabase.factory");
 Object.defineProperty(exports, "getSupabaseService", { enumerable: true, get: function () { return supabase_factory_1.getSupabaseService; } });
 class MessagesController {
-    // getConversations(arg0: string, authMiddleware: (req: Request, res: Response, next: NextFunction) => Promise<Response<any, Record<string, any>> | undefined>, getConversations: any) {
-    //     throw new Error('Method not implemented.');
-    // }
     async getConversations(req, res) {
         try {
             const userId = req.userId;

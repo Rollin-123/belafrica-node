@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.completeProfileSchema = exports.verifyOtpSchema = exports.requestOtpSchema = void 0;
+/*
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 const zod_1 = require("zod");
 exports.requestOtpSchema = zod_1.z.object({
     body: zod_1.z.object({

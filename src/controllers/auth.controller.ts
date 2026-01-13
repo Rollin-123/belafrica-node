@@ -69,6 +69,15 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
     }
   }
 
+  // ✅ NOUVEAU : Vérifier si l'utilisateur existe déjà pour personnaliser l'expérience
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id, is_verified')
+    .eq('phone_number', fullPhoneNumber)
+    .single();
+
+  const userExists = !!(existingUser && existingUser.is_verified);
+
   // 1. Générer le code et le token
   const otpCode = generateOtpCode();
 
@@ -88,8 +97,11 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
   // 4. Retourner une réponse riche pour le frontend
   res.status(200).json({
     success: true,
-    message: 'OTP généré. Cliquez sur le lien pour recevoir votre code.',
+    message: userExists 
+        ? 'Utilisateur reconnu. Veuillez vérifier votre identité pour vous connecter.' 
+        : 'OTP généré. Cliquez sur le lien pour recevoir votre code.',
     requiresBotStart: true, 
+    userExists: userExists, // Indique au frontend si c'est un login ou une inscription
     token: token,
     links: {
       web: telegramLink,
@@ -141,7 +153,7 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
     // 4. User is new or has an incomplete profile. Generate a temporary token with the phone number.
     const tempToken = jwt.sign(
         { phoneNumber: phoneNumber, temp: true }, 
-        process.env.TEMP_JWT_SECRET!,
+        process.env.TEMP_JWT_SECRET || process.env.JWT_SECRET!, 
         { expiresIn: '15m' }
     );
 

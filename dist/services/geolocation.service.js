@@ -6,6 +6,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GeolocationService = void 0;
 exports.getGeolocationService = getGeolocationService;
 // src/services/geolocation.service.ts
+/*
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 const axios_1 = __importDefault(require("axios"));
 class GeolocationService {
     constructor() {

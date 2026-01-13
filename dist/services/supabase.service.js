@@ -3,6 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SupabaseService = void 0;
 exports.getSupabaseService = getSupabaseService;
 // src/services/supabase.service.ts
+/*
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 const supabase_js_1 = require("@supabase/supabase-js");
 class SupabaseService {
     constructor() {

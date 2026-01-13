@@ -7,6 +7,7 @@ exports.completeProfile = exports.verifyOtp = exports.requestOtp = void 0;
 const supabase_1 = require("../utils/supabase");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
+const uuid_1 = require("uuid");
 const auth_service_1 = require("../services/auth.service");
 // Fonction pour générer un code OTP simple
 const generateOtpCode = (length = 6) => {
@@ -19,16 +20,16 @@ const generateOtpCode = (length = 6) => {
 const authService = new auth_service_1.AuthService();
 // Map des indicatifs téléphoniques vers les codes pays ISO 3166-1 alpha-2
 const phonePrefixToCountryISO = {
-    '+49': 'DE', // Allemagne
-    '+32': 'BE', // Belgique
-    '+375': 'BY', // Biélorussie
-    '+1': 'CA', // Canada (et US)
-    '+34': 'ES', // Espagne
-    '+33': 'FR', // France
-    '+39': 'IT', // Italie
-    '+41': 'CH', // Suisse
-    '+44': 'GB', // Royaume-Uni
-    '+7': 'RU' // Russie
+    '+49': 'DE',
+    '+32': 'BE',
+    '+375': 'BY',
+    '+1': 'CA',
+    '+34': 'ES',
+    '+33': 'FR',
+    '+39': 'IT',
+    '+41': 'CH',
+    '+44': 'GB',
+    '+7': 'RU'
 };
 /**
  * Demande un code OTP (One-Time Password) via Supabase Auth.
@@ -47,13 +48,13 @@ exports.requestOtp = (0, express_async_handler_1.default)(async (req, res) => {
     // Cette vérification est active sauf si GEO_BYPASS_IN_DEV est 'true'
     if (process.env.GEO_BYPASS_IN_DEV !== 'true') {
         // 1. Détecter le pays depuis l'IP (Render fournit cet en-tête)
-        const detectedCountryISO = req.headers['x-vercel-ip-country']; // ex: 'FR', 'BY'
+        const detectedCountryISO = req.headers['x-vercel-ip-country'];
         // 2. Déterminer le pays depuis l'indicatif téléphonique
         const phoneCountryISO = phonePrefixToCountryISO[countryCode];
         // 3. Comparer les deux. Si l'IP est détectée mais ne correspond pas au pays du numéro.
         if (detectedCountryISO && phoneCountryISO && detectedCountryISO !== phoneCountryISO) {
             console.warn(`⚠️ Tentative de connexion bloquée : IP de ${detectedCountryISO}, mais numéro de ${phoneCountryISO}.`);
-            res.status(403); // 403 Forbidden est le code HTTP approprié
+            res.status(403);
             throw new Error(`Votre localisation détectée (${detectedCountryISO}) ne correspond pas au pays de votre numéro de téléphone (${phoneCountryISO}). ` +
                 `Pour des raisons de sécurité, veuillez utiliser un numéro de téléphone du pays où vous vous trouvez actuellement.`);
         }
@@ -74,7 +75,7 @@ exports.requestOtp = (0, express_async_handler_1.default)(async (req, res) => {
     res.status(200).json({
         success: true,
         message: 'OTP généré. Cliquez sur le lien pour recevoir votre code.',
-        requiresBotStart: true, // Signal pour le frontend
+        requiresBotStart: true,
         token: token,
         links: {
             web: telegramLink,
@@ -118,8 +119,7 @@ exports.verifyOtp = (0, express_async_handler_1.default)(async (req, res) => {
         return;
     }
     // 4. User is new or has an incomplete profile. Generate a temporary token with the phone number.
-    const tempToken = jsonwebtoken_1.default.sign({ phoneNumber: phoneNumber, temp: true }, // Payload contains phoneNumber
-    process.env.TEMP_JWT_SECRET, { expiresIn: '15m' });
+    const tempToken = jsonwebtoken_1.default.sign({ phoneNumber: phoneNumber, temp: true }, process.env.TEMP_JWT_SECRET, { expiresIn: '15m' });
     res.json({
         success: true,
         message: 'Code vérifié avec succès.',
@@ -143,7 +143,8 @@ exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) 
     }
     // 4. Créer ou mettre à jour l'utilisateur via le service
     const finalUser = await authService.upsertUser({
-        phone_number: phoneNumber, // This is the conflict key
+        id: (0, uuid_1.v4)(),
+        phone_number: phoneNumber,
         country_code: countryCode,
         country_name: countryName,
         nationality: nationality,
@@ -152,15 +153,14 @@ exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) 
         pseudo: pseudo,
         email: email,
         avatar_url: avatar,
-        is_verified: true, // Mark the user as fully verified
+        is_verified: true,
         updated_at: new Date().toISOString(),
     });
     if (!finalUser) {
         throw new Error("Impossible de créer ou de retrouver l'utilisateur après la mise à jour.");
     }
     // 5. Generate the final, permanent session token
-    const finalToken = jsonwebtoken_1.default.sign({ userId: finalUser.id }, // Payload for the permanent token
-    process.env.JWT_SECRET, { expiresIn: '30d' });
+    const finalToken = jsonwebtoken_1.default.sign({ userId: finalUser.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
     // 6. Send the successful response
     res.status(200).json({
         success: true,

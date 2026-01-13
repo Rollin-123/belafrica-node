@@ -7,6 +7,11 @@ exports.getClientIP = getClientIP;
 exports.detectCountryByIP = detectCountryByIP;
 exports.validatePhoneCountryMatch = validatePhoneCountryMatch;
 // src/utils/geolocation.ts
+/*
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 const axios_1 = __importDefault(require("axios"));
 /**
  * Fonction pour récupérer la VRAIE IP du client

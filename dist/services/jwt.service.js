@@ -6,6 +6,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.JWTService = void 0;
 exports.getJWTService = getJWTService;
 // src/services/jwt.service.ts
+/*
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 class JWTService {
     constructor() {

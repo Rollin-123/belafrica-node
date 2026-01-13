@@ -2,6 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.africanCountries = exports.countryNames = exports.countryMapping = exports.GEO_VALIDATION_ENABLED = exports.APP_CONSTANTS = void 0;
 // src/utils/constants.ts
+/*
+    * BELAFRICA - Plateforme diaspora africaine
+    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Code source confidentiel - Usage interdit sans autorisation
+    */
 exports.APP_CONSTANTS = {
     APP_NAME: 'BELAFRICA',
     VERSION: '1.0.0',
