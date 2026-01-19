@@ -16,6 +16,7 @@ export interface GeolocationData {
   ip?: string;
 }
 
+
 export class GeolocationService {
   private ipApiUrl = process.env.IP_API_URL || 'http://ip-api.com/json';
   private ipifyUrl = process.env.IPIFY_URL || 'https://api.ipify.org?format=json';
