@@ -14,7 +14,7 @@ export class MessagesController {
       const userId = (req as any).userId;
       const supabase = (req as any).supabase;
 
-      // Logique à implémenter
+      
       res.json({
         success: true,
         conversations: []

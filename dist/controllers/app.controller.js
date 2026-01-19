@@ -10,7 +10,7 @@ const getAppConstants = (req, res) => {
     const publicConstants = {
         AFRICAN_COUNTRIES: constants_1.APP_CONSTANTS.AFRICAN_COUNTRIES,
         COUNTRY_NAMES: constants_1.APP_CONSTANTS.COUNTRY_NAMES,
-        PHONE_COUNTRY_MAPPING: constants_1.APP_CONSTANTS.PHONE_COUNTRY_MAPPING, // ✅ Exposer ce mapping
+        PHONE_COUNTRY_MAPPING: constants_1.APP_CONSTANTS.PHONE_COUNTRY_MAPPING,
     };
     res.status(200).json({ success: true, data: publicConstants });
 };

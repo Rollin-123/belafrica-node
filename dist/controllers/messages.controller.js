@@ -8,7 +8,6 @@ class MessagesController {
         try {
             const userId = req.userId;
             const supabase = req.supabase;
-            // Logique à implémenter
             res.json({
                 success: true,
                 conversations: []

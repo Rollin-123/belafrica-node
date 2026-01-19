@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken';
 import asyncHandler from 'express-async-handler';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthService } from '../services/auth.service';
+import { getGeolocationService } from '../services/geolocation.service';
 
 // Fonction pour générer un code OTP simple
 const generateOtpCode = (length = 6): string => {
@@ -19,8 +20,8 @@ const generateOtpCode = (length = 6): string => {
 };
 
 const authService = new AuthService();
+const geolocationService = getGeolocationService();
 
-// Map des indicatifs téléphoniques vers les codes pays ISO 3166-1 alpha-2
 const phonePrefixToCountryISO: { [key: string]: string } = {
   '+49': 'DE',
   '+32': 'BE', 
@@ -51,21 +52,22 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
   // ✅ NOUVELLE LOGIQUE DE GÉO-VALIDATION
   // =================================================
   // Cette vérification est active sauf si GEO_BYPASS_IN_DEV est 'true'
-  if (process.env.GEO_BYPASS_IN_DEV !== 'true') {
-    // 1. Détecter le pays depuis l'IP (Render fournit cet en-tête)
-    const detectedCountryISO = req.headers['x-vercel-ip-country'] as string;
+  if (process.env.GEO_BYPASS_IN_DEV !== 'true') { 
+    // 1. Obtenir l'IP réelle de l'utilisateur (Render utilise 'x-forwarded-for')
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip;
+    const locationData = await geolocationService.detectLocationByIP(ip);
 
-    // 2. Déterminer le pays depuis l'indicatif téléphonique
-    const phoneCountryISO = phonePrefixToCountryISO[countryCode];
-
-    // 3. Comparer les deux. Si l'IP est détectée mais ne correspond pas au pays du numéro.
-    if (detectedCountryISO && phoneCountryISO && detectedCountryISO !== phoneCountryISO) {
-      console.warn(`⚠️ Tentative de connexion bloquée : IP de ${detectedCountryISO}, mais numéro de ${phoneCountryISO}.`);
+    // 2. Vérifier si un VPN/Proxy est utilisé
+    if (locationData.isProxy) {
       res.status(403);
-      throw new Error(
-        `Votre localisation détectée (${detectedCountryISO}) ne correspond pas au pays de votre numéro de téléphone (${phoneCountryISO}). ` +
-        `Pour des raisons de sécurité, veuillez utiliser un numéro de téléphone du pays où vous vous trouvez actuellement.`
-      );
+      throw new Error('L\'utilisation de VPNs, proxys ou services d\'anonymisation est interdite pour des raisons de sécurité.');
+    }
+
+    // 3. Vérifier la correspondance entre le pays de l'IP et le pays du numéro de téléphone
+    const isValidMatch = geolocationService.validatePhoneCountryMatch(countryCode, locationData.countryCode);
+    if (!isValidMatch) {
+      res.status(403);
+      throw new Error(`Votre localisation détectée (${locationData.country}) ne correspond pas au pays de votre numéro de téléphone. Pour des raisons de sécurité, veuillez désactiver tout VPN et réessayer.`);
     }
   }
 
@@ -85,7 +87,6 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
   const { token } = await authService.saveOTPWithToken(fullPhoneNumber, otpCode);
 
   if (!token) {
-    // Ce cas ne devrait pas être atteint car le service lève une exception en cas d'échec.
     throw new Error("Impossible de générer un token de vérification.");
   }
 
@@ -101,7 +102,7 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
         ? 'Utilisateur reconnu. Veuillez vérifier votre identité pour vous connecter.' 
         : 'OTP généré. Cliquez sur le lien pour recevoir votre code.',
     requiresBotStart: true, 
-    userExists: userExists, // Indique au frontend si c'est un login ou une inscription
+    userExists: userExists,  
     token: token,
     links: {
       web: telegramLink,
@@ -136,21 +137,27 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
         .eq('phone_number', phoneNumber)
         .single();
 
+        
     if (existingUser && existingUser.is_verified) {
-        // This user is already fully registered. Log them in.
         const token = jwt.sign({ userId: existingUser.id }, process.env.JWT_SECRET!, {
             expiresIn: '7d',
         });
-        res.json({
+
+        res.cookie('access_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',  
+            maxAge: 7 * 24 * 60 * 60 * 1000  
+        });
+
+        res.status(200).json({
             success: true,
             message: 'Connexion réussie.',
-            token,
             user: existingUser,
         });
         return;
     }
 
-    // 4. User is new or has an incomplete profile. Generate a temporary token with the phone number.
     const tempToken = jwt.sign(
         { phoneNumber: phoneNumber, temp: true }, 
         process.env.TEMP_JWT_SECRET || process.env.JWT_SECRET!, 
@@ -165,7 +172,6 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const completeProfile = asyncHandler(async (req: Request, res: Response) => {
-  // 1. Get phoneNumber from the protectTemp middleware
   // @ts-ignore
   const phoneNumber = req.user?.phoneNumber;
 
@@ -174,16 +180,13 @@ export const completeProfile = asyncHandler(async (req: Request, res: Response) 
     throw new Error('Token invalide ou session expirée.');
   }
 
-  // 2. Get profile data from the request body
   const { countryCode, countryName, nationality, nationalityName, pseudo, email, avatar, community } = req.body;
 
-  // 3. Validate required fields
   if (!pseudo || !countryName || !nationalityName || !community) {
     res.status(400);
     throw new Error('Le pseudo, le pays, la nationalité et la communauté sont requis.');
   }
 
-  // 4. Créer ou mettre à jour l'utilisateur via le service
   const finalUser = await authService.upsertUser({
     id: uuidv4(), 
     phone_number: phoneNumber, 
@@ -203,18 +206,22 @@ export const completeProfile = asyncHandler(async (req: Request, res: Response) 
     throw new Error("Impossible de créer ou de retrouver l'utilisateur après la mise à jour.");
   }
 
-  // 5. Generate the final, permanent session token
   const finalToken = jwt.sign(
       { userId: finalUser.id },
       process.env.JWT_SECRET!,
       { expiresIn: '30d' }
   );
   
-  // 6. Send the successful response
-  res.status(200).json({ 
-    success: true, 
-    message: 'Profil créé avec succès.',
-    user: finalUser, 
-    token: finalToken 
-  });
+    res.cookie('access_token', finalToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000  
+    });
+
+    res.status(200).json({
+        success: true,
+        message: 'Profil créé avec succès.',
+        user: finalUser,
+    });
 });

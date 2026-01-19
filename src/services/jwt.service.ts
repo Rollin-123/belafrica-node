@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 
 export interface JWTPayload {
   userId: string;
+  pseudo: string;
   community: string;
   isAdmin: boolean;
   permissions?: string[];
@@ -25,7 +26,7 @@ export class JWTService {
     const tokenPayload = {
       ...payload,
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 jours
+    exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // Expiration par défaut à 30 jours pour le token principal
     };
 
     return jwt.sign(tokenPayload, this.secret);
@@ -64,6 +65,7 @@ export class JWTService {
 
       return this.generateToken({
         userId: decoded.userId,
+        pseudo: decoded.pseudo,
         community: decoded.community,
         isAdmin: decoded.isAdmin,
         permissions: decoded.permissions,

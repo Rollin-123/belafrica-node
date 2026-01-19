@@ -29,7 +29,6 @@ export class EncryptionService {
       const salt = crypto.randomBytes(this.saltLength);
       const key = await this.generateKey(conversationId, salt);
       const iv = crypto.randomBytes(this.ivLength);
-      
       const cipher = crypto.createCipheriv(this.algorithm, key, iv);
       
       let encrypted = cipher.update(message, 'utf8', 'hex');

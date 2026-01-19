@@ -7,16 +7,12 @@ exports.isSuperAdmin = exports.isAdmin = exports.protectTemp = exports.protect =
 const supabase_1 = require("../utils/supabase");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
-/**
- * Middleware pour vérifier si un utilisateur est authentifié via un token JWT.
- * Il récupère le token de l'en-tête 'Authorization', le valide avec Supabase,
- * et attache l'ID de l'utilisateur à l'objet `req` pour les prochains middlewares/contrôleurs.
- */
 exports.protect = (0, express_async_handler_1.default)(async (req, res, next) => {
     let token;
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    // @ts-ignore
+    token = req.cookies?.access_token;
+    if (token) {
         try {
-            token = req.headers.authorization.split(' ')[1];
             // 1. Valider le token
             const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
             // 2. Récupérer l'utilisateur depuis Supabase pour avoir les données à jour
@@ -39,7 +35,7 @@ exports.protect = (0, express_async_handler_1.default)(async (req, res, next) =>
             throw new Error('Non autorisé: Token invalide ou expiré.');
         }
     }
-    if (!token) {
+    else {
         res.status(401);
         throw new Error('Non autorisé, pas de token');
     }
@@ -75,10 +71,6 @@ exports.protectTemp = (0, express_async_handler_1.default)(async (req, res, next
         throw new Error('Non autorisé, pas de token temporaire');
     }
 });
-/**
- * Middleware pour vérifier si l'utilisateur authentifié est un administrateur (simple ou super).
- * Doit être utilisé APRÈS le middleware `protect` qui attache l'objet utilisateur.
- */
 exports.isAdmin = (0, express_async_handler_1.default)(async (req, res, next) => {
     // @ts-ignore
     const user = req.user;
@@ -88,11 +80,6 @@ exports.isAdmin = (0, express_async_handler_1.default)(async (req, res, next) =>
     }
     next();
 });
-/**
- * Middleware pour vérifier si l'utilisateur authentifié est un super-administrateur.
- * Doit être utilisé APRÈS le middleware `protect`.
- * Il vérifie le rôle de l'utilisateur dans la base de données.
- */
 exports.isSuperAdmin = (0, express_async_handler_1.default)(async (req, res, next) => {
     // @ts-ignore
     const user = req.user;

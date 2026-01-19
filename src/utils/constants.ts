@@ -25,16 +25,16 @@ export const APP_CONSTANTS = {
   
   // Pays autorisés (code téléphone -> codes ISO)
   PHONE_COUNTRY_MAPPING: {
-    '+33': ['FR'],        // France
-    '+32': ['BE'],        // Belgique
-    '+49': ['DE'],        // Allemagne
-    '+39': ['IT'],        // Italie
-    '+34': ['ES'],        // Espagne
-    '+41': ['CH'],        // Suisse
-    '+44': ['GB', 'UK'],  // Royaume-Uni
-    '+1': ['CA', 'US'],   // Canada ou USA
-    '+7': ['RU', 'KZ'],   // Russie ou Kazakhstan
-    '+375': ['BY']        // Biélorussie
+    '+33': ['FR'],         
+    '+32': ['BE'],        
+    '+49': ['DE'],        
+    '+39': ['IT'],        
+    '+34': ['ES'],        
+    '+41': ['CH'],        
+    '+44': ['GB', 'UK'],  
+    '+1': ['CA', 'US'],   
+    '+7': ['RU', 'KZ'],   
+    '+375': ['BY']        
   },
   
   // Noms des pays pour affichage

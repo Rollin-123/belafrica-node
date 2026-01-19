@@ -1,4 +1,4 @@
-// server.ts - VERSION CORRIGÉE ET VÉRIFIÉE
+// server.ts 
 /* 
     * BELAFRICA - Plateforme diaspora africaine
     * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
@@ -17,48 +17,57 @@ import adminRoutes from './routes/admin.routes';
 import { initializeTelegramBot } from './services/telegram.service';
 import { getAppConstants } from './controllers/app.controller';
 import messagingRoutes from './routes/messaging.routes';
+import http from 'http';  
+import { initializeSocketManager } from './services/socket.manager';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000; // Utiliser le port 3000 en local
+const server = http.createServer(app);
 
-// ✅ MIDDLEWARES
+const PORT = process.env.PORT || 3000;  
+
+const allowedOrigins = [
+  'http://localhost:4200',  
+  'https://belafrica-version1.netlify.app'  
+];
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+};
+
+initializeSocketManager(server, corsOptions);
+
 app.use(helmet());
-// ✅ CORRECTION: Utiliser la variable d'environnement pour CORS
-app.use(cors({
-  // La variable d'environnement peut contenir plusieurs URLs séparées par une virgule
-  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : false,
-  credentials: true
-}));
-app.use(express.json({ limit: '10mb' })); // ✅ Augmenter la limite pour le JSON (pour les avatars en base64)
-app.use(express.urlencoded({ extended: true, limit: '10mb' })); // ✅ Augmenter aussi pour les formulaires URL-encoded
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '10mb' })); 
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));  
 
-// Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200
 });
 app.use('/api/', limiter);
 
-// Logging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.url} - IP: ${req.ip}`);
   next();
 });
 
-// ✅ ROUTES
-// La route pour les constantes doit être déclarée avant les autres groupes
 app.get('/api/constants', getAppConstants);
-
-// Les autres groupes de routes
 app.use('/api/auth', authRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/messaging', messagingRoutes);
 
-// ✅ ROUTE: Health check
 app.get('/api/health', async (req, res) => {
   try {
     const { error } = await supabase.from('users').select('id').limit(1);
@@ -74,15 +83,14 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// ✅ 404 Handler (doit être le DERNIER)
 app.use('*', (req, res) => {
   res.status(404).json({ 
     error: `Route non trouvée: ${req.method} ${req.originalUrl}`
   });
 });
 
-// ✅ Démarrer serveur
-app.listen(PORT, () => {
+server.listen(PORT, () => {
+  console.log(`✅ Serveur HTTP et Sockets démarrés sur le port ${PORT}`);
   console.log(`🚀 Serveur BELAFRICA démarré sur le port ${PORT}`);
   initializeTelegramBot();
   console.log(`🌍 URL: https://belafrica-backend.onrender.com`);
