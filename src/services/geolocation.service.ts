@@ -18,29 +18,36 @@ export interface GeolocationData {
 
 
 export class GeolocationService {
-  private ipApiUrl = process.env.IP_API_URL || 'http://ip-api.com/json';
-  private ipifyUrl = process.env.IPIFY_URL || 'https://api.ipify.org?format=json';
+  private ipApiUrl = process.env.IP_API_URL || 'http://ip-api.com/json';  
+  private proxyCheckUrl = 'http://proxycheck.io/v2';  
+  private proxyCheckApiKey = process.env.PROXYCHECK_API_KEY; 
 
   async detectLocationByIP(ip?: string): Promise<GeolocationData> {
     try {
-      // Récupérer l'IP si non fournie
       let clientIP = ip;
       
       if (!clientIP || clientIP === '::1' || clientIP === '127.0.0.1') {
-        // En local ou IP invalide, utiliser ipify
-        const ipResponse = await axios.get(this.ipifyUrl);
-        clientIP = ipResponse.data.ip;
+        clientIP = '8.8.8.8'; 
       }
-
       console.log('🌍 Détection localisation IP:', clientIP);
 
-      // Récupérer les infos de géolocalisation
-      const geoResponse = await axios.get(`${this.ipApiUrl}/${clientIP}`);
+      const [geoResponse, proxyResponse] = await Promise.all([
+        axios.get(`${this.ipApiUrl}/${clientIP}?fields=status,message,country,countryCode,city,regionName,timezone`),
+        axios.get(`${this.proxyCheckUrl}/${clientIP}?vpn=1&key=${this.proxyCheckApiKey}`)
+      ]);
+
       const geoData = geoResponse.data;
 
       if (geoData.status === 'fail') {
         throw new Error(`Échec géolocalisation: ${geoData.message}`);
       }
+
+      const proxyData = proxyResponse.data;
+      if (proxyData.status !== 'ok') {
+        console.warn(`⚠️ Avertissement ProxyCheck: ${proxyData.message || 'Erreur API'}`);
+      }
+
+      const isProxy = proxyData[clientIP]?.proxy === 'yes';
 
       return {
         ip: clientIP,
@@ -49,13 +56,14 @@ export class GeolocationService {
         city: geoData.city,
         region: geoData.regionName,
         timezone: geoData.timezone,
-        isProxy: geoData.proxy || geoData.hosting || false
+        isProxy: isProxy
       };
       
     } catch (error: any) {
       console.error('❌ Erreur géolocalisation:', error.message);
       
-      // Retourner des valeurs par défaut en cas d'erreur
+      // En cas d'erreur (ex: l'API est en panne), on ne bloque pas l'utilisateur
+      // mais on log l'erreur. Pour une sécurité maximale, on pourrait retourner isProxy: true ici.
       return {
         ip: ip || 'inconnu',
         country: 'Inconnu',
