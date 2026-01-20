@@ -49,7 +49,7 @@ exports.protectTemp = (0, express_async_handler_1.default)(async (req, res, next
             token = req.headers.authorization.split(' ')[1];
             // 2. Vérifier le token avec la clé secrète TEMPORAIRE
             const decoded = jsonwebtoken_1.default.verify(token, process.env.TEMP_JWT_SECRET);
-            console.log('Decoded temp token in protectTemp:', decoded); // Debugging line
+            console.log('Decoded temp token in protectTemp:', decoded);
             // 3. S'assurer que c'est bien un token temporaire
             if (!decoded.temp || !decoded.phoneNumber) {
                 res.status(401);
@@ -57,7 +57,7 @@ exports.protectTemp = (0, express_async_handler_1.default)(async (req, res, next
             }
             // 4. Attacher le payload décodé à la requête
             // @ts-ignore
-            req.user = decoded; // req.user sera { phoneNumber: '...', temp: true }
+            req.user = decoded;
             next();
         }
         catch (error) {
