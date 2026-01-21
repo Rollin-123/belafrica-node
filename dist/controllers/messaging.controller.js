@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.markMessagesAsRead = exports.deleteMessage = exports.editMessage = exports.sendMessage = exports.getMessages = exports.getConversations = void 0;
+const express_validator_1 = require("express-validator");
 const supabase_1 = require("../utils/supabase");
 const socket_manager_1 = require("../services/socket.manager");
 /**
@@ -74,13 +75,17 @@ const sendMessage = async (req, res) => {
     if (!userId) {
         return res.status(401).json({ success: false, error: 'Non autorisé' });
     }
+    const errors = (0, express_validator_1.validationResult)(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
+    }
     if (!encryptedContent || !iv) {
         return res.status(400).json({ success: false, error: 'Le contenu chiffré (encryptedContent) et le vecteur d\'initialisation (iv) sont requis.' });
     }
     try {
         const messageData = {
             conversation_id: conversationId,
-            user_id: userId,
+            sender_id: userId,
             encrypted_content: encryptedContent,
             iv: iv,
             reply_to_id: replyToId || null,
@@ -88,9 +93,9 @@ const sendMessage = async (req, res) => {
         };
         // La politique RLS garantit que l'utilisateur est bien membre de la conversation.
         const { data: newMessage, error } = await supabase_1.supabase
-            .from('messages') // Assurez-vous que c'est la bonne table
+            .from('messages')
             .insert(messageData)
-            .select('*, user:users(id, pseudo, avatar_url), mentions')
+            .select('*, user:users!messages_sender_id_fkey(id, pseudo, avatar_url), mentions')
             .single();
         if (error)
             throw error;
@@ -134,8 +139,8 @@ const editMessage = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Le délai de modification est dépassé.' });
         }
         const { data: updatedMessage, error } = await supabase_1.supabase
-            .from('messages') // Assurez-vous que c'est la bonne table
-            .update({ encrypted_content: encryptedContent, iv: iv, is_edited: true, updated_at: new Date().toISOString() })
+            .from('messages')
+            .update({ encrypted_content: encryptedContent, iv: iv, is_edited: true })
             .eq('id', messageId)
             .eq('user_id', userId)
             .select('*, user:users(id, pseudo, avatar_url)')
@@ -180,8 +185,8 @@ const deleteMessage = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Le délai de suppression est dépassé.' });
         }
         const { data: deletedMessage, error } = await supabase_1.supabase
-            .from('messages') // Assurez-vous que c'est la bonne table
-            .update({ is_deleted: true, encrypted_content: null, iv: null })
+            .from('messages')
+            .update({ is_deleted: true, encrypted_content: 'Message supprimé', iv: 'deleted' })
             .eq('id', messageId)
             .eq('user_id', userId)
             .select('id, conversation_id')

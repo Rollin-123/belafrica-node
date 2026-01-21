@@ -4,6 +4,7 @@
     * Code source confidentiel - Usage interdit sans autorisation
     */
 import { Request, Response } from 'express';  
+import { validationResult } from 'express-validator';
 import { supabase } from '../utils/supabase';
 import { getIo } from '../services/socket.manager';  
 
@@ -87,6 +88,11 @@ export const sendMessage = async (req: Request, res: Response) => {
     return res.status(401).json({ success: false, error: 'Non autorisé' });
   }
 
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, errors: errors.array() });
+  }
+
   if (!encryptedContent || !iv) {
     return res.status(400).json({ success: false, error: 'Le contenu chiffré (encryptedContent) et le vecteur d\'initialisation (iv) sont requis.' });
   }
@@ -94,7 +100,7 @@ export const sendMessage = async (req: Request, res: Response) => {
   try {
     const messageData = {
       conversation_id: conversationId,
-      user_id: userId,
+      sender_id: userId,  
       encrypted_content: encryptedContent,  
       iv: iv,
       reply_to_id: replyToId || null,
@@ -103,9 +109,9 @@ export const sendMessage = async (req: Request, res: Response) => {
 
     // La politique RLS garantit que l'utilisateur est bien membre de la conversation.
     const { data: newMessage, error } = await supabase
-      .from('messages') // Assurez-vous que c'est la bonne table
+      .from('messages')  
       .insert(messageData)
-      .select('*, user:users(id, pseudo, avatar_url), mentions')
+      .select('*, user:users!messages_sender_id_fkey(id, pseudo, avatar_url), mentions')  
       .single();
 
     if (error) throw error;
@@ -152,8 +158,8 @@ export const editMessage = async (req: Request, res: Response) => {
     }
 
     const { data: updatedMessage, error } = await supabase
-      .from('messages') // Assurez-vous que c'est la bonne table
-      .update({ encrypted_content: encryptedContent, iv: iv, is_edited: true, updated_at: new Date().toISOString() })
+      .from('messages')  
+      .update({ encrypted_content: encryptedContent, iv: iv, is_edited: true })  
       .eq('id', messageId)
       .eq('user_id', userId) 
       .select('*, user:users(id, pseudo, avatar_url)')
@@ -201,8 +207,8 @@ export const deleteMessage = async (req: Request, res: Response) => {
     }
 
     const { data: deletedMessage, error } = await supabase
-      .from('messages') // Assurez-vous que c'est la bonne table
-      .update({ is_deleted: true, encrypted_content: null, iv: null })
+      .from('messages') 
+      .update({ is_deleted: true, encrypted_content: 'Message supprimé', iv: 'deleted' })  
       .eq('id', messageId)
       .eq('user_id', userId)  
       .select('id, conversation_id')
