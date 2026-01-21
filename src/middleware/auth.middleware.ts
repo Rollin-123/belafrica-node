@@ -12,8 +12,12 @@ import { UserPayload } from '../types/user';
  
 export const protect = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   let token;
-  token = req.cookies?.access_token;
-  if (token) {
+  
+  // Vérifier si le token est dans l'en-tête Authorization (Bearer Token)
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }  
+  if (token) { 
     try {
       // 1. Valider le token
       const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };

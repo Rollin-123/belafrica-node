@@ -122,16 +122,11 @@ exports.verifyOtp = (0, express_async_handler_1.default)(async (req, res) => {
         const token = jsonwebtoken_1.default.sign({ userId: existingUser.id }, process.env.JWT_SECRET, {
             expiresIn: '7d',
         });
-        res.cookie('access_token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'none',
-            maxAge: 7 * 24 * 60 * 60 * 1000
-        });
         res.status(200).json({
             success: true,
             message: 'Connexion réussie.',
             user: existingUser,
+            token: token,
         });
         return;
     }
@@ -172,16 +167,11 @@ exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) 
         throw new Error("Impossible de créer ou de retrouver l'utilisateur après la mise à jour.");
     }
     const finalToken = jsonwebtoken_1.default.sign({ userId: finalUser.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.cookie('access_token', finalToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
-        maxAge: 30 * 24 * 60 * 60 * 1000
-    });
     res.status(200).json({
         success: true,
         message: 'Profil créé avec succès.',
         user: finalUser,
+        token: finalToken, // Retourne le token dans le corps de la réponse
     });
 });
 //# sourceMappingURL=auth.controller.js.map

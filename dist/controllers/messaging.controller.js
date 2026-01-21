@@ -26,7 +26,7 @@ const getConversations = async (req, res) => {
         // Récupérer les détails de ces conversations
         const { data: conversations, error: conversationsError } = await supabase_1.supabase
             .from('conversations')
-            .select('*, conversation_participants(user_id, users(id, pseudo, avatar_url))')
+            .select('*, conversation_participants(user_id, users(id, pseudo, avatar_url, community))')
             .in('id', conversationIds);
         if (conversationsError)
             throw conversationsError;

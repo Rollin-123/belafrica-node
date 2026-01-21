@@ -19,6 +19,7 @@ import { getAppConstants } from './controllers/app.controller';
 import messagingRoutes from './routes/messaging.routes';
 import http from 'http';  
 import { initializeSocketManager } from './services/socket.manager';
+import cookieParser from 'cookie-parser';
 
 dotenv.config();
 
@@ -28,7 +29,8 @@ const PORT = process.env.PORT || 3000;
 
 const allowedOrigins = [
   'http://localhost:4200',  
-  'https://belafrica-version1.netlify.app'  
+  'https://belafrica-version1.netlify.app',
+  'https://belafrica-backend.onrender.com'  
 ];
 
 const corsOptions: cors.CorsOptions = {
@@ -37,7 +39,7 @@ const corsOptions: cors.CorsOptions = {
       callback(null, true);
      return;
     }
-    if (allowedOrigins.includes(origin) || origin.endsWith('--belafrica-version1.netlify.app')) {
+    if (allowedOrigins.includes(origin) || origin.endsWith('.netlify.app') || origin.endsWith('.onrender.com')) {
       callback(null, true);
     } else {
       console.warn(`🚫 Origine CORS non autorisée bloquée: ${origin}`);
@@ -46,11 +48,11 @@ const corsOptions: cors.CorsOptions = {
   },
   credentials: true,
 };
-
 initializeSocketManager(server, corsOptions);
 
 app.use(helmet());
 app.use(cors(corsOptions));
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' })); 
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));  
 

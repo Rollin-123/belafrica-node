@@ -24,13 +24,15 @@ const app_controller_1 = require("./controllers/app.controller");
 const messaging_routes_1 = __importDefault(require("./routes/messaging.routes"));
 const http_1 = __importDefault(require("http"));
 const socket_manager_1 = require("./services/socket.manager");
+const cookie_parser_1 = __importDefault(require("cookie-parser"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const PORT = process.env.PORT || 3000;
 const allowedOrigins = [
     'http://localhost:4200',
-    'https://belafrica-version1.netlify.app'
+    'https://belafrica-version1.netlify.app',
+    'https://belafrica-backend.onrender.com'
 ];
 const corsOptions = {
     origin: (origin, callback) => {
@@ -38,7 +40,7 @@ const corsOptions = {
             callback(null, true);
             return;
         }
-        if (allowedOrigins.includes(origin) || origin.endsWith('--belafrica-version1.netlify.app')) {
+        if (allowedOrigins.includes(origin) || origin.endsWith('.netlify.app') || origin.endsWith('.onrender.com')) {
             callback(null, true);
         }
         else {
@@ -51,6 +53,7 @@ const corsOptions = {
 (0, socket_manager_1.initializeSocketManager)(server, corsOptions);
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)(corsOptions));
+app.use((0, cookie_parser_1.default)());
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 const limiter = (0, express_rate_limit_1.default)({

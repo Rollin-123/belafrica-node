@@ -143,17 +143,11 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
             expiresIn: '7d',
         });
 
-        res.cookie('access_token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'none',
-            maxAge: 7 * 24 * 60 * 60 * 1000  
-        });
-
         res.status(200).json({
             success: true,
             message: 'Connexion réussie.',
             user: existingUser,
+            token: token,  
         });
         return;
     }
@@ -212,16 +206,10 @@ export const completeProfile = asyncHandler(async (req: Request, res: Response) 
       { expiresIn: '30d' }
   );
   
-    res.cookie('access_token', finalToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
-        maxAge: 30 * 24 * 60 * 60 * 1000  
-    });
-
     res.status(200).json({
         success: true,
         message: 'Profil créé avec succès.',
         user: finalUser,
+        token: finalToken, // Retourne le token dans le corps de la réponse
     });
 });

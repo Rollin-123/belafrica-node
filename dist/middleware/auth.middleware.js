@@ -9,7 +9,10 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 exports.protect = (0, express_async_handler_1.default)(async (req, res, next) => {
     let token;
-    token = req.cookies?.access_token;
+    // Vérifier si le token est dans l'en-tête Authorization (Bearer Token)
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        token = req.headers.authorization.split(' ')[1];
+    }
     if (token) {
         try {
             // 1. Valider le token
