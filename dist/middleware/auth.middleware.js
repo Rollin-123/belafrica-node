@@ -9,7 +9,6 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 exports.protect = (0, express_async_handler_1.default)(async (req, res, next) => {
     let token;
-    // @ts-ignore
     token = req.cookies?.access_token;
     if (token) {
         try {
@@ -25,8 +24,6 @@ exports.protect = (0, express_async_handler_1.default)(async (req, res, next) =>
                 res.status(401);
                 throw new Error('Non autorisé, utilisateur non trouvé.');
             }
-            // 3. Attacher l'objet utilisateur complet à la requête
-            // @ts-ignore
             req.user = user;
             next();
         }
@@ -40,7 +37,6 @@ exports.protect = (0, express_async_handler_1.default)(async (req, res, next) =>
         throw new Error('Non autorisé, pas de token');
     }
 });
-// @ts-ignore
 exports.protectTemp = (0, express_async_handler_1.default)(async (req, res, next) => {
     let token;
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
@@ -55,9 +51,7 @@ exports.protectTemp = (0, express_async_handler_1.default)(async (req, res, next
                 res.status(401);
                 throw new Error('Non autorisé, token temporaire invalide.');
             }
-            // 4. Attacher le payload décodé à la requête
-            // @ts-ignore
-            req.user = decoded;
+            req.phoneNumber = decoded.phoneNumber;
             next();
         }
         catch (error) {
@@ -72,7 +66,6 @@ exports.protectTemp = (0, express_async_handler_1.default)(async (req, res, next
     }
 });
 exports.isAdmin = (0, express_async_handler_1.default)(async (req, res, next) => {
-    // @ts-ignore
     const user = req.user;
     if (!user || !user.is_admin) {
         res.status(403);
@@ -81,7 +74,6 @@ exports.isAdmin = (0, express_async_handler_1.default)(async (req, res, next) =>
     next();
 });
 exports.isSuperAdmin = (0, express_async_handler_1.default)(async (req, res, next) => {
-    // @ts-ignore
     const user = req.user;
     if (!user || user.admin_level !== 'super') {
         res.status(403);

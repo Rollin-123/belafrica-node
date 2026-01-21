@@ -19,9 +19,7 @@ const handleValidationErrors = (req: Request, res: Response, next: NextFunction)
 };
 
 router.get('/conversations', authenticateToken, getConversations);
-
 router.get('/conversations/:conversationId/messages', authenticateToken, getMessages);
-
 router.post(
   '/conversations/:conversationId/messages',
   authenticateToken,
@@ -35,7 +33,6 @@ router.post(
   handleValidationErrors,
   sendMessage
 );
-
 router.put('/messages/:messageId', authenticateToken, editMessage);
 router.delete('/messages/:messageId', authenticateToken, deleteMessage);
 

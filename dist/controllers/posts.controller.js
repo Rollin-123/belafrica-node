@@ -12,7 +12,6 @@ class PostsController {
                 return res.status(401).json({ error: 'Non autorisé' });
             }
             const supabase = (0, supabase_factory_1.getSupabaseService)();
-            // Récupérer l'utilisateur pour sa communauté
             const user = await supabase.getUserById(userId);
             if (!user) {
                 return res.status(404).json({ error: 'Utilisateur non trouvé' });
@@ -83,10 +82,10 @@ class PostsController {
             // Calculer la date d'expiration
             const expiresAt = new Date();
             if (visibility === 'national') {
-                expiresAt.setHours(expiresAt.getHours() + 48); // 48h
+                expiresAt.setHours(expiresAt.getHours() + 48);
             }
             else {
-                expiresAt.setHours(expiresAt.getHours() + 72); // 72h
+                expiresAt.setHours(expiresAt.getHours() + 72);
             }
             // ✅ CORRECTION : Utilisez l'interface PostData correctement
             const postData = {

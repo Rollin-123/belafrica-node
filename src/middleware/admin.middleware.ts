@@ -4,12 +4,12 @@
     * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
     * Code source confidentiel - Usage interdit sans autorisation
     */
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';  
 import { getSupabaseService } from '../services/supabase.service';
 
 export async function adminMiddleware(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
     
     if (!userId) {
       return res.status(401).json({
@@ -17,7 +17,6 @@ export async function adminMiddleware(req: Request, res: Response, next: NextFun
       });
     }
 
-    
     const supabase = getSupabaseService();
     const user = await supabase.getUserById(userId);
 
@@ -34,7 +33,7 @@ export async function adminMiddleware(req: Request, res: Response, next: NextFun
     }
 
     // Vérifier les permissions spécifiques si nécessaire
-    const requiredPermission = (req as any).requiredPermission;
+    const requiredPermission = req.requiredPermission; 
     if (requiredPermission && user.admin_permissions) {
       if (!user.admin_permissions.includes(requiredPermission)) {
         return res.status(403).json({

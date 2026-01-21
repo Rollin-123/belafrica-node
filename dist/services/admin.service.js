@@ -50,7 +50,6 @@ class AdminService {
             if (error) {
                 return { success: false, error: 'Code invalide ou expiré' };
             }
-            // Marquer comme utilisé
             await supabase
                 .from('admin_codes')
                 .update({
@@ -59,7 +58,6 @@ class AdminService {
                 used_at: new Date().toISOString()
             })
                 .eq('id', data.id);
-            // Promouvoir l'utilisateur
             await supabase
                 .from('users')
                 .update({

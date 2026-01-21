@@ -51,7 +51,7 @@ const getMessages = async (req, res) => {
         // La politique RLS de Supabase garantit que l'utilisateur a accès à cette conversation.
         const { data: messages, error } = await supabase_1.supabase
             .from('messages')
-            .select('*, user:users(id, pseudo, avatar_url)') // Enrichir avec l'auteur du message
+            .select('*, user:users(id, pseudo, avatar_url)')
             .eq('conversation_id', conversationId)
             .order('created_at', { ascending: true });
         if (error)
@@ -70,7 +70,7 @@ exports.getMessages = getMessages;
 const sendMessage = async (req, res) => {
     const userId = req.user?.id;
     const { conversationId } = req.params;
-    const { encryptedContent, iv, replyToId, mentions } = req.body; // ✅ Ajout des mentions
+    const { encryptedContent, iv, replyToId, mentions } = req.body;
     if (!userId) {
         return res.status(401).json({ success: false, error: 'Non autorisé' });
     }
@@ -84,13 +84,13 @@ const sendMessage = async (req, res) => {
             encrypted_content: encryptedContent,
             iv: iv,
             reply_to_id: replyToId || null,
-            mentions: mentions || null, // ✅ Stockage des mentions
+            mentions: mentions || null,
         };
         // La politique RLS garantit que l'utilisateur est bien membre de la conversation.
         const { data: newMessage, error } = await supabase_1.supabase
             .from('messages')
             .insert(messageData)
-            .select('*, user:users(id, pseudo, avatar_url), mentions') // ✅ On retourne aussi les mentions
+            .select('*, user:users(id, pseudo, avatar_url), mentions')
             .single();
         if (error)
             throw error;
@@ -129,7 +129,7 @@ const editMessage = async (req, res) => {
         if (originalMessage.user_id !== userId) {
             return res.status(403).json({ success: false, error: 'Vous n\'êtes pas autorisé à modifier ce message.' });
         }
-        const EDIT_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+        const EDIT_TIMEOUT = 30 * 60 * 1000;
         if (new Date().getTime() - new Date(originalMessage.created_at).getTime() > EDIT_TIMEOUT) {
             return res.status(403).json({ success: false, error: 'Le délai de modification est dépassé.' });
         }
@@ -137,7 +137,7 @@ const editMessage = async (req, res) => {
             .from('messages')
             .update({ encrypted_content: encryptedContent, iv: iv, is_edited: true, updated_at: new Date().toISOString() })
             .eq('id', messageId)
-            .eq('user_id', userId) // Sécurité : seul l'auteur peut modifier
+            .eq('user_id', userId)
             .select('*, user:users(id, pseudo, avatar_url)')
             .single();
         if (error)
@@ -175,7 +175,7 @@ const deleteMessage = async (req, res) => {
         if (originalMessage.user_id !== userId) {
             return res.status(403).json({ success: false, error: 'Vous n\'êtes pas autorisé à supprimer ce message.' });
         }
-        const DELETE_TIMEOUT = 2 * 60 * 60 * 1000; // 2 heures
+        const DELETE_TIMEOUT = 2 * 60 * 60 * 1000;
         if (new Date().getTime() - new Date(originalMessage.created_at).getTime() > DELETE_TIMEOUT) {
             return res.status(403).json({ success: false, error: 'Le délai de suppression est dépassé.' });
         }
@@ -183,7 +183,7 @@ const deleteMessage = async (req, res) => {
             .from('messages')
             .update({ is_deleted: true, encrypted_content: null, iv: null })
             .eq('id', messageId)
-            .eq('user_id', userId) // Sécurité : seul l'auteur peut supprimer
+            .eq('user_id', userId)
             .select('id, conversation_id')
             .single();
         if (error)
@@ -206,7 +206,7 @@ exports.deleteMessage = deleteMessage;
 const markMessagesAsRead = async (req, res) => {
     const userId = req.user?.id;
     const { conversationId } = req.params;
-    const { messageIds } = req.body; // Un tableau d'IDs de messages
+    const { messageIds } = req.body;
     if (!userId)
         return res.status(401).json({ success: false, error: 'Non autorisé' });
     if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {

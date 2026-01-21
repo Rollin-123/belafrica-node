@@ -1,5 +1,6 @@
 // src/controllers/user.controller.ts
 /* 
+
     * BELAFRICA - Plateforme diaspora africaine
     * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
     * Code source confidentiel - Usage interdit sans autorisation
@@ -11,7 +12,7 @@ export class UserController {
   // ✅ RÉCUPÉRER le profil utilisateur
   async getProfile(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.id;
       
       if (!userId) {
         return res.status(401).json({ error: 'Non autorisé' });
@@ -23,7 +24,6 @@ export class UserController {
         return res.status(404).json({ error: 'Utilisateur non trouvé' });
       }
 
-      // Ne pas envoyer les données sensibles
       const { password, ...safeUser } = user;
 
       res.json({
@@ -42,7 +42,7 @@ export class UserController {
   // ✅ METTRE À JOUR le profil
   async updateProfile(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.id;
       const { pseudo, email, bio, gender, profession, interests } = req.body;
 
       if (!userId) {
@@ -51,7 +51,6 @@ export class UserController {
 
       const supabase = getSupabaseService();
       
-      // Vérifier que le pseudo n'est pas déjà pris (si changé)
       if (pseudo) {
         const existingUser = await supabase.findUserByPseudo(pseudo, userId);
         if (existingUser) {
@@ -88,7 +87,7 @@ export class UserController {
   // ✅ METTRE À JOUR l'avatar
   async updateAvatar(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.id;
       const { avatarUrl } = req.body;
 
       if (!userId || !avatarUrl) {
@@ -117,7 +116,7 @@ export class UserController {
   // ✅ RÉCUPÉRER les utilisateurs de la communauté
   async getCommunityUsers(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.id;
       
       if (!userId) {
         return res.status(401).json({ error: 'Non autorisé' });
@@ -125,7 +124,6 @@ export class UserController {
 
       const supabase = getSupabaseService();
       
-      // Récupérer l'utilisateur pour connaître sa communauté
       const user = await supabase.getUserById(userId);
       if (!user) {
         return res.status(404).json({ error: 'Utilisateur non trouvé' });
@@ -151,7 +149,7 @@ export class UserController {
   // ✅ RÉCUPÉRER un utilisateur par ID
   async getUserById(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.id;
       const { id } = req.params;
 
       if (!userId || !id) {
@@ -162,24 +160,20 @@ export class UserController {
 
       const supabase = getSupabaseService();
       
-      // Récupérer l'utilisateur demandeur pour connaître sa communauté
       const requester = await supabase.getUserById(userId);
       if (!requester) {
         return res.status(404).json({ error: 'Utilisateur non trouvé' });
       }
 
-      // Récupérer l'utilisateur cible
       const targetUser = await supabase.getUserById(id);
       if (!targetUser) {
         return res.status(404).json({ error: 'Utilisateur cible non trouvé' });
       }
 
-      // Vérifier qu'ils sont dans la même communauté
       if (requester.community !== targetUser.community) {
         return res.status(403).json({ error: 'Accès non autorisé' });
       }
 
-      // Ne pas envoyer les données sensibles
       const { password, email, phone_number, ...safeUser } = targetUser;
 
       res.json({

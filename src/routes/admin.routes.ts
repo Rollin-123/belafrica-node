@@ -9,7 +9,6 @@ import { protect, isSuperAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// Seuls les super-admins peuvent générer, voir et supprimer des codes
 router.post('/generate-code', protect, isSuperAdmin, generateAdminCode);
 router.get('/codes', protect, isSuperAdmin, getAdminCodes);
 router.delete('/codes/:code', protect, isSuperAdmin, deleteAdminCode);

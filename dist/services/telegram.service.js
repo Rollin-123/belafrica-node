@@ -28,7 +28,7 @@ const initializeTelegramBot = () => {
     // ✅ GESTION DU DEEP LINKING : /start [token]
     bot.onText(/\/start (.+)/, async (msg, match) => {
         const chatId = msg.chat.id;
-        const token = match[1]; // Le token est capturé ici
+        const token = match[1];
         console.log(`📲 Deep link reçu: /start ${token} de ${chatId}`);
         try {
             // 1. Chercher l'OTP associé au token via notre service

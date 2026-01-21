@@ -16,7 +16,6 @@ export interface GeolocationData {
   ip?: string;
 }
 
-
 export class GeolocationService {
   private ipApiUrl = process.env.IP_API_URL || 'http://ip-api.com/json';  
   private proxyCheckUrl = 'http://proxycheck.io/v2';  
@@ -61,9 +60,7 @@ export class GeolocationService {
       
     } catch (error: any) {
       console.error('❌ Erreur géolocalisation:', error.message);
-      
-      // En cas d'erreur (ex: l'API est en panne), on ne bloque pas l'utilisateur
-      // mais on log l'erreur. Pour une sécurité maximale, on pourrait retourner isProxy: true ici.
+       
       return {
         ip: ip || 'inconnu',
         country: 'Inconnu',
@@ -76,7 +73,6 @@ export class GeolocationService {
 
   // ✅ VÉRIFIER la correspondance pays/téléphone (STRICTE)
   validatePhoneCountryMatch(phoneCountryCode: string, detectedCountryCode: string): boolean {
-    // Mapping des codes téléphoniques vers codes pays ISO
     const phoneToCountryMap: Record<string, string[]> = {
       '+33': ['FR'], // France
       '+32': ['BE'], // Belgique
@@ -94,7 +90,7 @@ export class GeolocationService {
     
     if (!allowedCountries) {
       console.warn(`⚠️ Code téléphone non mappé: ${phoneCountryCode}`);
-      return false; // REFUSER les codes non autorisés
+      return false;  
     }
 
     // Nettoyer le code pays détecté
@@ -137,7 +133,7 @@ export class GeolocationService {
       console.error('❌ Erreur validation localisation:', error);
       
       return {
-        isValid: false, // En cas d'erreur, on refuse (sécurité)
+        isValid: false,  
         error: error.message,
         ip: userIP
       };
@@ -169,7 +165,6 @@ export class GeolocationService {
   }
 }
 
-// Singleton
 let geolocationInstance: GeolocationService;
 
 export function getGeolocationService(): GeolocationService {

@@ -25,7 +25,6 @@ class MessagesController {
         try {
             const conversationId = req.params.id;
             const supabase = req.supabase;
-            // Logique à implémenter
             res.json({
                 success: true,
                 messages: []
@@ -43,7 +42,6 @@ class MessagesController {
         try {
             const { participantIds } = req.body;
             const supabase = req.supabase;
-            // Logique à implémenter
             res.json({
                 success: true,
                 conversation: {}
@@ -101,7 +99,6 @@ class MessagesController {
         try {
             const { communityId, name } = req.body;
             const supabase = req.supabase;
-            // Logique à implémenter
             res.json({
                 success: true,
                 group: {}
@@ -119,7 +116,6 @@ class MessagesController {
         try {
             const communityId = req.params.communityId;
             const supabase = req.supabase;
-            // Logique à implémenter
             res.json({
                 success: true,
                 group: {}

@@ -16,7 +16,6 @@ class UserController {
             if (!user) {
                 return res.status(404).json({ error: 'Utilisateur non trouvé' });
             }
-            // Ne pas envoyer les données sensibles
             const { password, ...safeUser } = user;
             res.json({
                 success: true,
@@ -39,7 +38,6 @@ class UserController {
                 return res.status(401).json({ error: 'Non autorisé' });
             }
             const supabase = (0, supabase_factory_1.getSupabaseService)();
-            // Vérifier que le pseudo n'est pas déjà pris (si changé)
             if (pseudo) {
                 const existingUser = await supabase.findUserByPseudo(pseudo, userId);
                 if (existingUser) {
@@ -108,7 +106,6 @@ class UserController {
                 return res.status(401).json({ error: 'Non autorisé' });
             }
             const supabase = (0, supabase_factory_1.getSupabaseService)();
-            // Récupérer l'utilisateur pour connaître sa communauté
             const user = await supabase.getUserById(userId);
             if (!user) {
                 return res.status(404).json({ error: 'Utilisateur non trouvé' });
@@ -139,21 +136,17 @@ class UserController {
                 });
             }
             const supabase = (0, supabase_factory_1.getSupabaseService)();
-            // Récupérer l'utilisateur demandeur pour connaître sa communauté
             const requester = await supabase.getUserById(userId);
             if (!requester) {
                 return res.status(404).json({ error: 'Utilisateur non trouvé' });
             }
-            // Récupérer l'utilisateur cible
             const targetUser = await supabase.getUserById(id);
             if (!targetUser) {
                 return res.status(404).json({ error: 'Utilisateur cible non trouvé' });
             }
-            // Vérifier qu'ils sont dans la même communauté
             if (requester.community !== targetUser.community) {
                 return res.status(403).json({ error: 'Accès non autorisé' });
             }
-            // Ne pas envoyer les données sensibles
             const { password, email, phone_number, ...safeUser } = targetUser;
             res.json({
                 success: true,

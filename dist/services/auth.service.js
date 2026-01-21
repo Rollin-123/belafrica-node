@@ -10,7 +10,6 @@ const supabase_js_1 = require("@supabase/supabase-js");
 const environments_1 = require("../config/environments");
 const uuid_1 = require("uuid");
 const supabase = (0, supabase_js_1.createClient)(environments_1.config.supabase.url, environments_1.config.supabase.serviceKey);
-//@ts-ignore
 class AuthService {
     async findUserByPhone(phoneNumber) {
         try {
@@ -36,7 +35,7 @@ class AuthService {
      */
     async saveOTPWithToken(phoneNumber, code) {
         try {
-            const token = (0, uuid_1.v4)(); // Générer un token unique
+            const token = (0, uuid_1.v4)();
             const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
             const { data, error } = await supabase
                 .from('otp_codes')
@@ -118,8 +117,8 @@ class AuthService {
                 .select('*')
                 .eq('phone_number', phoneNumber)
                 .eq('code', code)
-                .eq('verified', false) // Doit ne pas être déjà vérifié
-                .gt('expires_at', new Date().toISOString()) // Doit ne pas être expiré
+                .eq('verified', false)
+                .gt('expires_at', new Date().toISOString())
                 .single();
             if (error) {
                 // PGRST116 = 0 ligne trouvée, ce qui est normal pour un code invalide/expiré.
@@ -150,13 +149,12 @@ class AuthService {
                 .select()
                 .single();
             if (error) {
-                console.error('❌ Erreur Supabase upsertUser:', error); // Log détaillé de l'erreur Supabase
+                console.error('❌ Erreur Supabase upsertUser:', error);
                 throw error;
             }
             return data;
         }
         catch (error) {
-            // Cette erreur sera maintenant plus générique pour le client, mais détaillée dans les logs serveur.
             throw new Error(`Erreur serveur lors de la mise à jour du profil.`);
         }
     }

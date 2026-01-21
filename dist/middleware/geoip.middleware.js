@@ -13,7 +13,6 @@ const constants_1 = require("../utils/constants");
  */
 const verifyCountryByIp = (expectedCountrySource) => {
     return async (req, res, next) => {
-        // ✅ Logique de bypass finale : Lire la variable d'environnement directement ici
         const bypassGeo = process.env.GEO_BYPASS_IN_DEV === 'true';
         if (bypassGeo) {
             console.log(' GÉO: Bypass de la vérification en mode développement.');
@@ -21,7 +20,6 @@ const verifyCountryByIp = (expectedCountrySource) => {
         }
         const testIp = req.headers['x-test-ip'];
         const ip = testIp || req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
-        // Le reste du code est bon, on ne le touche pas.
         try {
             // Appel à l'API ip-api.com
             const response = await axios_1.default.get(`http://ip-api.com/json/${ip}`);

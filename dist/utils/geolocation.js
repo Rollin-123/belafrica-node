@@ -18,7 +18,6 @@ const axios_1 = __importDefault(require("axios"));
  * ESSENTIEL POUR RENDER/NETLIFY
  */
 function getClientIP(req) {
-    // 📌 PRIORITÉ 1 : x-forwarded-for (Render, Netlify, etc.)
     const forwardedFor = req.headers['x-forwarded-for'];
     if (forwardedFor) {
         if (Array.isArray(forwardedFor)) {
@@ -33,12 +32,10 @@ function getClientIP(req) {
         }
         return realIP;
     }
-    // 📌 PRIORITÉ 3 : cf-connecting-ip (Cloudflare)
     const cfIP = req.headers['cf-connecting-ip'];
     if (cfIP) {
         return cfIP;
     }
-    // 📌 DERNIER RECOURS : l'IP de la connexion
     return req.ip || req.connection?.remoteAddress || 'unknown';
 }
 /**
@@ -46,10 +43,8 @@ function getClientIP(req) {
  */
 async function detectCountryByIP(ip) {
     try {
-        // 🎯 RÈGLE IMPORTANTE : En développement local, on simule la Biélorussie
         const isLocalhost = ip === '::1' || ip === '127.0.0.1' || ip.includes('192.168.');
         const isProduction = process.env.NODE_ENV === 'production';
-        // 🔧 OPTION DE BYPASS CONFIGURABLE
         const GEO_BYPASS_IN_DEV = process.env.GEO_BYPASS_IN_DEV === 'true';
         if (isLocalhost && GEO_BYPASS_IN_DEV) {
             console.log('🌍 MODE DÉVELOPPEMENT : Bypass activé -> Simulation Biélorussie');
@@ -61,7 +56,6 @@ async function detectCountryByIP(ip) {
                 query: ip
             };
         }
-        // 📍 EN PRODUCTION OU IP RÉELLE
         console.log('🌍 Détection géographique réelle pour IP:', ip);
         try {
             const response = await axios_1.default.get(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,city,isp,query`, {
@@ -82,7 +76,6 @@ async function detectCountryByIP(ip) {
         catch (apiError) {
             console.error('❌ Erreur API géolocalisation:', apiError.message);
         }
-        // 📍 FALLBACK : Utiliser ipapi.co comme alternative
         console.log('🌍 Tentative avec ipapi.co comme fallback');
         try {
             const fallbackResponse = await axios_1.default.get(`https://ipapi.co/${ip}/json/`, {
@@ -102,7 +95,6 @@ async function detectCountryByIP(ip) {
         catch (fallbackError) {
             console.error('❌ Fallback géolocalisation échoué:', fallbackError.message);
         }
-        // 💀 MODE DÉGRADÉ : Si tout échoue
         return {
             country: 'Unknown',
             countryCode: 'XX',
@@ -139,7 +131,6 @@ function validatePhoneCountryMatch(phoneCountryCode, detectedCountryCode) {
         '+7': ['RU', 'KZ'], // Russie ou Kazakhstan
         '+375': ['BY'] // Biélorussie
     };
-    // Nettoyer les codes
     const cleanPhoneCode = phoneCountryCode.trim();
     const cleanDetectedCode = detectedCountryCode.toUpperCase().trim();
     console.log('🔍 Validation pays:', {

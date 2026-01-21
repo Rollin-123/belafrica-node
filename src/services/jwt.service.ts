@@ -26,7 +26,7 @@ export class JWTService {
     const tokenPayload = {
       ...payload,
       iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // Expiration par défaut à 30 jours pour le token principal
+    exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60)  
     };
 
     return jwt.sign(tokenPayload, this.secret);
@@ -78,7 +78,6 @@ export class JWTService {
   }
 }
 
-// Singleton
 let jwtInstance: JWTService;
 
 export function getJWTService(): JWTService {

@@ -59,19 +59,16 @@ const limiter = rateLimit({
   max: 200
 });
 app.use('/api/', limiter);
-
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.url} - IP: ${req.ip}`);
   next();
 });
-
 app.get('/api/constants', getAppConstants);
 app.use('/api/auth', authRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/messaging', messagingRoutes);
-
 app.get('/api/health', async (req, res) => {
   try {
     const { error } = await supabase.from('users').select('id').limit(1);
@@ -86,7 +83,6 @@ app.get('/api/health', async (req, res) => {
     res.status(500).json({ status: 'ERROR', error: error.message });
   }
 });
-
 app.use('*', (req, res) => {
   res.status(404).json({ 
     error: `Route non trouvée: ${req.method} ${req.originalUrl}`

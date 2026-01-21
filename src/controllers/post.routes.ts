@@ -9,7 +9,6 @@ import { protect, isAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// Routes pour les posts
 router.get('/national', protect, postsController.getNationalPosts);
 router.get('/international', protect, postsController.getInternationalPosts);
 router.post('/', protect, isAdmin, postsController.createPost);

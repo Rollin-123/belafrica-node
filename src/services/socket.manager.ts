@@ -23,7 +23,6 @@ export const initializeSocketManager = (httpServer: HttpServer, corsOptions: Cor
 
   io.use((socket: AuthenticatedSocket, next) => {
     let token = socket.handshake.auth.token;
-    // Si le token n'est pas dans auth, vérifier les cookies (pour HttpOnly)
     if (!token && socket.request.headers.cookie) {
       const parsedCookies = Object.fromEntries(socket.request.headers.cookie.split('; ').map(c => c.split('=')));
       const accessToken = parsedCookies['access_token'];

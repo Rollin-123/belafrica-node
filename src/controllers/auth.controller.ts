@@ -146,7 +146,6 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
         res.cookie('access_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            // 'none' est nécessaire pour les requêtes cross-domain (frontend/backend sur des domaines différents)
             sameSite: 'none',
             maxAge: 7 * 24 * 60 * 60 * 1000  
         });
@@ -173,8 +172,7 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const completeProfile = asyncHandler(async (req: Request, res: Response) => {
-  // @ts-ignore
-  const phoneNumber = req.user?.phoneNumber;
+  const phoneNumber = req.phoneNumber;  
 
   if (!phoneNumber) {
     res.status(401);
@@ -217,7 +215,6 @@ export const completeProfile = asyncHandler(async (req: Request, res: Response) 
     res.cookie('access_token', finalToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        // 'none' est nécessaire pour les requêtes cross-domain
         sameSite: 'none',
         maxAge: 30 * 24 * 60 * 60 * 1000  
     });

@@ -18,7 +18,6 @@ class SupabaseService {
     // ✅ CRÉER un utilisateur
     async createUser(userData) {
         try {
-            // Générer une communauté si non fournie
             const community = userData.community ||
                 `${userData.nationalityName}En${userData.countryName.replace(/\s/g, '')}`;
             const { data, error } = await this.client
@@ -115,12 +114,10 @@ class SupabaseService {
     // ✅ SAUVEGARDER un OTP
     async saveOTP(otpData) {
         try {
-            // Supprimer les anciens OTP pour ce numéro
             await this.client
                 .from('otp_codes')
                 .delete()
                 .eq('phone_number', otpData.phoneNumber);
-            // Insérer le nouveau
             const { error } = await this.client
                 .from('otp_codes')
                 .insert([{

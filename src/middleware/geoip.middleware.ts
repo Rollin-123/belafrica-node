@@ -15,7 +15,6 @@ import { APP_CONSTANTS } from '../utils/constants';
  */
 export const verifyCountryByIp = (expectedCountrySource: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    // ✅ Logique de bypass finale : Lire la variable d'environnement directement ici
     const bypassGeo = process.env.GEO_BYPASS_IN_DEV === 'true';
     if (bypassGeo) {
       console.log(' GÉO: Bypass de la vérification en mode développement.');
@@ -23,8 +22,6 @@ export const verifyCountryByIp = (expectedCountrySource: string) => {
     }
     const testIp = req.headers['x-test-ip'] as string;
     const ip = testIp || (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.socket.remoteAddress;
-
-    // Le reste du code est bon, on ne le touche pas.
 
     try {
       // Appel à l'API ip-api.com

@@ -9,7 +9,6 @@ import { getGeoDebug, postTestValidation } from '../controllers/debug.controller
 
 const router = Router();
 
-
 router.get('/geo', getGeoDebug);
 router.post('/test-validation', postTestValidation);
 

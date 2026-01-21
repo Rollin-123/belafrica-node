@@ -11,7 +11,6 @@ import { APP_CONSTANTS } from '../utils/constants';
  * Expose les constantes publiques de l'application au frontend.
  */
 export const getAppConstants = (req: Request, res: Response) => {
-  // Ne pas exposer les secrets ou les variables d'environnement sensibles !
   const publicConstants = {
     AFRICAN_COUNTRIES: APP_CONSTANTS.AFRICAN_COUNTRIES,
     COUNTRY_NAMES: APP_CONSTANTS.COUNTRY_NAMES,

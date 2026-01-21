@@ -7,14 +7,17 @@
     "rootDir": "./src",                            
     "strict": true,                               
     "moduleResolution": "node",                   
-    "esModuleInterop": true,                      
+    "esModuleInterop": true,
     "skipLibCheck": true,                          
-    "forceConsistentCasingInFileNames": true,      
-    "resolveJsonModule": true,                    
-    "sourceMap": true                             
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "typeRoots": ["./node_modules/@types", "./src/types"],  
+    "types": ["node", "express", "jsonwebtoken", "cookie-parser"]  
   },
   "include": [
-    "src/**/*.ts"                                  
+    "src/**/*.ts",
+    "src/types/**/*.d.ts"                                 
   ],
   "exclude": [
     "node_modules",                               

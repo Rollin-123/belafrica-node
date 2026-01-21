@@ -1,5 +1,6 @@
 // src/controllers/admin.controller.ts
 /* 
+
     * BELAFRICA - Plateforme diaspora africaine
     * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
     * Code source confidentiel - Usage interdit sans autorisation
@@ -22,7 +23,6 @@ const generateShortCode = (length = 6): string => {
  */
 export const generateAdminCode = async (req: Request, res: Response) => {
   try {
-    // ✅ Aligner les paramètres avec le frontend
     const {
       community,
       userEmail,
@@ -42,11 +42,10 @@ export const generateAdminCode = async (req: Request, res: Response) => {
       .insert({
         code,
         community,
-        user_email: userEmail, // ✅ Ajouter l'email
+        user_email: userEmail,  
         permissions,
         expires_at: expiresAt.toISOString(),
-        // @ts-ignore
-        created_by: req.user?.userId,
+        created_by: req.user?.id, // req.user est maintenant typé
       })
       .select()
       .single();
@@ -67,8 +66,7 @@ export const generateAdminCode = async (req: Request, res: Response) => {
  */
 export const submitAdminPromotionRequest = async (req: Request, res: Response) => {
   try {
-    // @ts-ignore
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const { identityImageUrl, motivation } = req.body;
 
     if (!userId) {
@@ -85,12 +83,12 @@ export const submitAdminPromotionRequest = async (req: Request, res: Response) =
         user_id: userId,
         identity_image_url: identityImageUrl,
         motivation: motivation,
-        status: 'pending' // 'pending', 'approved', 'rejected'
+        status: 'pending'  
       });
 
     if (error) {
       // Gérer le cas où une demande existe déjà si nécessaire (contrainte unique sur user_id)
-      if (error.code === '23505') { // unique_violation
+      if (error.code === '23505') {  
         return res.status(409).json({ success: false, error: 'Vous avez déjà une demande en cours.' });
       }
       throw error;
@@ -107,8 +105,7 @@ export const submitAdminPromotionRequest = async (req: Request, res: Response) =
 export const validateAdminCode = async (req: Request, res: Response) => {
   try {
     const { code } = req.body;
-    // @ts-ignore
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
 
     if (!userId) {
       // Cette vérification est redondante si `isAuthenticated` est utilisé, mais c'est une bonne pratique.
@@ -116,7 +113,7 @@ export const validateAdminCode = async (req: Request, res: Response) => {
     }
 
     // ✅ Récupérer l'utilisateur et son code
-    const { data: user, error: userError } = await supabase.from('users').select('id, community, email, is_admin, admin_permissions').eq('id', userId).single(); // ✅ Récupérer admin_permissions aussi
+    const { data: user, error: userError } = await supabase.from('users').select('id, community, email, is_admin, admin_permissions').eq('id', userId).single();  
     if (userError || !user) {
       return res.status(404).json({ success: false, error: 'Utilisateur non trouvé.' });
     }
@@ -207,7 +204,7 @@ export const deleteAdminCode = async (req: Request, res: Response) => {
     // On le marque comme utilisé pour l'invalider plutôt que de le supprimer
     const { error } = await supabase
       .from('admin_codes')
-      .update({ used: true, expires_at: new Date().toISOString() }) // On le fait expirer immédiatement
+      .update({ used: true, expires_at: new Date().toISOString() })  
       .eq('code', code);
 
     if (error) throw error;

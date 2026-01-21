@@ -16,7 +16,6 @@ const generateShortCode = (length = 6) => {
  */
 const generateAdminCode = async (req, res) => {
     try {
-        // ✅ Aligner les paramètres avec le frontend
         const { community, userEmail, permissions, expiresInHours } = req.body;
         if (!community || !userEmail || !permissions || !expiresInHours) {
             return res.status(400).json({ success: false, error: 'Paramètres manquants: community, userEmail, permissions, expiresInHours sont requis.' });
@@ -28,11 +27,10 @@ const generateAdminCode = async (req, res) => {
             .insert({
             code,
             community,
-            user_email: userEmail, // ✅ Ajouter l'email
+            user_email: userEmail,
             permissions,
             expires_at: expiresAt.toISOString(),
-            // @ts-ignore
-            created_by: req.user?.userId,
+            created_by: req.user?.id, // req.user est maintenant typé
         })
             .select()
             .single();
@@ -52,8 +50,7 @@ exports.generateAdminCode = generateAdminCode;
  */
 const submitAdminPromotionRequest = async (req, res) => {
     try {
-        // @ts-ignore
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         const { identityImageUrl, motivation } = req.body;
         if (!userId) {
             return res.status(401).json({ success: false, error: 'Utilisateur non authentifié.' });
@@ -67,11 +64,11 @@ const submitAdminPromotionRequest = async (req, res) => {
             user_id: userId,
             identity_image_url: identityImageUrl,
             motivation: motivation,
-            status: 'pending' // 'pending', 'approved', 'rejected'
+            status: 'pending'
         });
         if (error) {
             // Gérer le cas où une demande existe déjà si nécessaire (contrainte unique sur user_id)
-            if (error.code === '23505') { // unique_violation
+            if (error.code === '23505') {
                 return res.status(409).json({ success: false, error: 'Vous avez déjà une demande en cours.' });
             }
             throw error;
@@ -89,14 +86,13 @@ exports.submitAdminPromotionRequest = submitAdminPromotionRequest;
 const validateAdminCode = async (req, res) => {
     try {
         const { code } = req.body;
-        // @ts-ignore
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         if (!userId) {
             // Cette vérification est redondante si `isAuthenticated` est utilisé, mais c'est une bonne pratique.
             return res.status(401).json({ success: false, error: 'Utilisateur non authentifié.' });
         }
         // ✅ Récupérer l'utilisateur et son code
-        const { data: user, error: userError } = await supabase_1.supabase.from('users').select('id, community, email, is_admin, admin_permissions').eq('id', userId).single(); // ✅ Récupérer admin_permissions aussi
+        const { data: user, error: userError } = await supabase_1.supabase.from('users').select('id, community, email, is_admin, admin_permissions').eq('id', userId).single();
         if (userError || !user) {
             return res.status(404).json({ success: false, error: 'Utilisateur non trouvé.' });
         }
@@ -179,7 +175,7 @@ const deleteAdminCode = async (req, res) => {
         // On le marque comme utilisé pour l'invalider plutôt que de le supprimer
         const { error } = await supabase_1.supabase
             .from('admin_codes')
-            .update({ used: true, expires_at: new Date().toISOString() }) // On le fait expirer immédiatement
+            .update({ used: true, expires_at: new Date().toISOString() })
             .eq('code', code);
         if (error)
             throw error;

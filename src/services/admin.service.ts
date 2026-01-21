@@ -19,7 +19,6 @@ export class AdminService {
       }
 
       const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); 
-
       const { data, error } = await supabase
         .from('admin_codes')
         .insert([{
@@ -55,7 +54,6 @@ export class AdminService {
         return { success: false, error: 'Code invalide ou expiré' };
       }
 
-      // Marquer comme utilisé
       await supabase
         .from('admin_codes')
         .update({
@@ -65,7 +63,6 @@ export class AdminService {
         })
         .eq('id', data.id);
 
-      // Promouvoir l'utilisateur
       await supabase
         .from('users')
         .update({

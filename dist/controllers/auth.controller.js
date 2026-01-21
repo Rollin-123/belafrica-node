@@ -125,7 +125,6 @@ exports.verifyOtp = (0, express_async_handler_1.default)(async (req, res) => {
         res.cookie('access_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            // 'none' est nécessaire pour les requêtes cross-domain (frontend/backend sur des domaines différents)
             sameSite: 'none',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
@@ -144,8 +143,7 @@ exports.verifyOtp = (0, express_async_handler_1.default)(async (req, res) => {
     });
 });
 exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) => {
-    // @ts-ignore
-    const phoneNumber = req.user?.phoneNumber;
+    const phoneNumber = req.phoneNumber;
     if (!phoneNumber) {
         res.status(401);
         throw new Error('Token invalide ou session expirée.');
@@ -177,7 +175,6 @@ exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) 
     res.cookie('access_token', finalToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        // 'none' est nécessaire pour les requêtes cross-domain
         sameSite: 'none',
         maxAge: 30 * 24 * 60 * 60 * 1000
     });

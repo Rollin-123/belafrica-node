@@ -3,21 +3,14 @@
     * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
     * Code source confidentiel - Usage interdit sans autorisation
     */
-import { Request, Response } from 'express';
+import { Request, Response } from 'express';  
 import { supabase } from '../utils/supabase';
 import { getIo } from '../services/socket.manager';  
-
-// ✅ Amélioration du typage pour Express afin d'éviter les @ts-ignore
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-  };
-}
 
 /**
  * ✅ Récupère toutes les conversations de l'utilisateur authentifié.
  */
-export const getConversations = async (req: AuthenticatedRequest, res: Response) => {
+export const getConversations = async (req: Request, res: Response) => {  
   const userId = req.user?.id;  
   if (!userId) {
     return res.status(401).json({ success: false, error: 'Non autorisé' });
@@ -57,7 +50,7 @@ export const getConversations = async (req: AuthenticatedRequest, res: Response)
 /**
  * ✅ Récupère les messages d'une conversation spécifique.
  */
-export const getMessages = async (req: AuthenticatedRequest, res: Response) => {
+export const getMessages = async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { conversationId } = req.params;
 
@@ -69,7 +62,7 @@ export const getMessages = async (req: AuthenticatedRequest, res: Response) => {
     // La politique RLS de Supabase garantit que l'utilisateur a accès à cette conversation.
     const { data: messages, error } = await supabase
       .from('messages')
-      .select('*, user:users(id, pseudo, avatar_url)') // Enrichir avec l'auteur du message
+      .select('*, user:users(id, pseudo, avatar_url)')  
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
 
@@ -85,10 +78,10 @@ export const getMessages = async (req: AuthenticatedRequest, res: Response) => {
 /**
  * ✅ Envoie un message dans une conversation.
  */
-export const sendMessage = async (req: AuthenticatedRequest, res: Response) => {
+export const sendMessage = async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { conversationId } = req.params;
-  const { encryptedContent, iv, replyToId, mentions } = req.body; // ✅ Ajout des mentions
+  const { encryptedContent, iv, replyToId, mentions } = req.body;  
 
   if (!userId) {
     return res.status(401).json({ success: false, error: 'Non autorisé' });
@@ -105,14 +98,14 @@ export const sendMessage = async (req: AuthenticatedRequest, res: Response) => {
       encrypted_content: encryptedContent,
       iv: iv,
       reply_to_id: replyToId || null,
-      mentions: mentions || null, // ✅ Stockage des mentions
+      mentions: mentions || null,  
     };
 
     // La politique RLS garantit que l'utilisateur est bien membre de la conversation.
     const { data: newMessage, error } = await supabase
       .from('messages')
       .insert(messageData)
-      .select('*, user:users(id, pseudo, avatar_url), mentions') // ✅ On retourne aussi les mentions
+      .select('*, user:users(id, pseudo, avatar_url), mentions')
       .single();
 
     if (error) throw error;
@@ -131,7 +124,7 @@ export const sendMessage = async (req: AuthenticatedRequest, res: Response) => {
 /**
  * ✅ Modifie un message existant.
  */
-export const editMessage = async (req: AuthenticatedRequest, res: Response) => {
+export const editMessage = async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { messageId } = req.params;
   const { encryptedContent, iv } = req.body;
@@ -153,7 +146,7 @@ export const editMessage = async (req: AuthenticatedRequest, res: Response) => {
     if (originalMessage.user_id !== userId) {
       return res.status(403).json({ success: false, error: 'Vous n\'êtes pas autorisé à modifier ce message.' });
     }
-    const EDIT_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+    const EDIT_TIMEOUT = 30 * 60 * 1000;  
     if (new Date().getTime() - new Date(originalMessage.created_at).getTime() > EDIT_TIMEOUT) {
       return res.status(403).json({ success: false, error: 'Le délai de modification est dépassé.' });
     }
@@ -162,7 +155,7 @@ export const editMessage = async (req: AuthenticatedRequest, res: Response) => {
       .from('messages')
       .update({ encrypted_content: encryptedContent, iv: iv, is_edited: true, updated_at: new Date().toISOString() })
       .eq('id', messageId)
-      .eq('user_id', userId) // Sécurité : seul l'auteur peut modifier
+      .eq('user_id', userId) 
       .select('*, user:users(id, pseudo, avatar_url)')
       .single();
 
@@ -182,7 +175,7 @@ export const editMessage = async (req: AuthenticatedRequest, res: Response) => {
 /**
  * ✅ Supprime un message (soft delete).
  */
-export const deleteMessage = async (req: AuthenticatedRequest, res: Response) => {
+export const deleteMessage = async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { messageId } = req.params;
 
@@ -202,7 +195,7 @@ export const deleteMessage = async (req: AuthenticatedRequest, res: Response) =>
     if (originalMessage.user_id !== userId) {
       return res.status(403).json({ success: false, error: 'Vous n\'êtes pas autorisé à supprimer ce message.' });
     }
-    const DELETE_TIMEOUT = 2 * 60 * 60 * 1000; // 2 heures
+    const DELETE_TIMEOUT = 2 * 60 * 60 * 1000;  
     if (new Date().getTime() - new Date(originalMessage.created_at).getTime() > DELETE_TIMEOUT) {
       return res.status(403).json({ success: false, error: 'Le délai de suppression est dépassé.' });
     }
@@ -211,7 +204,7 @@ export const deleteMessage = async (req: AuthenticatedRequest, res: Response) =>
       .from('messages')
       .update({ is_deleted: true, encrypted_content: null, iv: null })
       .eq('id', messageId)
-      .eq('user_id', userId) // Sécurité : seul l'auteur peut supprimer
+      .eq('user_id', userId)  
       .select('id, conversation_id')
       .single();
 
@@ -231,10 +224,10 @@ export const deleteMessage = async (req: AuthenticatedRequest, res: Response) =>
 /**
  * ✅ Marque des messages comme lus et notifie la conversation.
  */
-export const markMessagesAsRead = async (req: AuthenticatedRequest, res: Response) => {
+export const markMessagesAsRead = async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { conversationId } = req.params;
-  const { messageIds } = req.body; // Un tableau d'IDs de messages
+  const { messageIds } = req.body;  
 
   if (!userId) return res.status(401).json({ success: false, error: 'Non autorisé' });
   if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {

@@ -1,5 +1,6 @@
 // src/controllers/posts.controller.ts
 /* 
+
     * BELAFRICA - Plateforme diaspora africaine
     * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
     * Code source confidentiel - Usage interdit sans autorisation
@@ -11,15 +12,13 @@ export class PostsController {
   // ✅ RÉCUPÉRER les posts nationaux
   async getNationalPosts(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.id;
       
       if (!userId) {
         return res.status(401).json({ error: 'Non autorisé' });
       }
 
       const supabase = getSupabaseService();
-      
-      // Récupérer l'utilisateur pour sa communauté
       const user = await supabase.getUserById(userId);
       if (!user) {
         return res.status(404).json({ error: 'Utilisateur non trouvé' });
@@ -45,7 +44,7 @@ export class PostsController {
   // ✅ RÉCUPÉRER les posts internationaux
   async getInternationalPosts(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.id;
       
       if (!userId) {
         return res.status(401).json({ error: 'Non autorisé' });
@@ -71,7 +70,7 @@ export class PostsController {
   // ✅ CRÉER un post - CORRECTION ICI !
   async createPost(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.id;
       const { content, imageUrls, visibility } = req.body;
 
       if (!userId || !content || !visibility) {
@@ -104,9 +103,9 @@ export class PostsController {
       // Calculer la date d'expiration
       const expiresAt = new Date();
       if (visibility === 'national') {
-        expiresAt.setHours(expiresAt.getHours() + 48); // 48h
+        expiresAt.setHours(expiresAt.getHours() + 48);  
       } else {
-        expiresAt.setHours(expiresAt.getHours() + 72); // 72h
+        expiresAt.setHours(expiresAt.getHours() + 72); 
       }
 
       // ✅ CORRECTION : Utilisez l'interface PostData correctement
@@ -144,7 +143,7 @@ export class PostsController {
   // ✅ AIMER un post
   async toggleLike(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.id;
       const { id } = req.params;
 
       if (!userId || !id) {
@@ -173,7 +172,7 @@ export class PostsController {
   // ✅ SUPPRIMER un post
   async deletePost(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.id;
       const { id } = req.params;
 
       if (!userId || !id) {
@@ -217,5 +216,4 @@ export class PostsController {
 }
 
 export const postsController = new PostsController();
-
 export { getSupabaseService };

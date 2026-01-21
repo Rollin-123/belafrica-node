@@ -14,5 +14,4 @@ export function getSupabaseService(): SupabaseService {
   }
   return supabaseInstance;
 }
-
 export default SupabaseService;

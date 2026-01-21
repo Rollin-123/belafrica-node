@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey);
 
-//@ts-ignore
+
 export class AuthService {
   async findUserByPhone(phoneNumber: string) {
     try {
@@ -34,7 +34,7 @@ export class AuthService {
    */
   async saveOTPWithToken(phoneNumber: string, code: string): Promise<{token: string, otpId: string}> {
     try {
-      const token = uuidv4(); // Générer un token unique
+      const token = uuidv4();  
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
       
       const { data, error } = await supabase
@@ -118,8 +118,8 @@ export class AuthService {
         .select('*')
         .eq('phone_number', phoneNumber)
         .eq('code', code)
-        .eq('verified', false) // Doit ne pas être déjà vérifié
-        .gt('expires_at', new Date().toISOString()) // Doit ne pas être expiré
+        .eq('verified', false)  
+        .gt('expires_at', new Date().toISOString())  
         .single();
 
       if (error) {
@@ -153,12 +153,11 @@ export class AuthService {
         .single();
 
       if (error) {
-        console.error('❌ Erreur Supabase upsertUser:', error); // Log détaillé de l'erreur Supabase
+        console.error('❌ Erreur Supabase upsertUser:', error); 
         throw error;
       }
       return data;
     } catch (error: any) {
-      // Cette erreur sera maintenant plus générique pour le client, mais détaillée dans les logs serveur.
       throw new Error(`Erreur serveur lors de la mise à jour du profil.`);
     }
   }

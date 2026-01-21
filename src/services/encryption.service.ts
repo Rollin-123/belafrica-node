@@ -108,5 +108,4 @@ export function getEncryptionService(): EncryptionService {
   
   return encryptionInstance;
 }
-
 export default EncryptionService;
