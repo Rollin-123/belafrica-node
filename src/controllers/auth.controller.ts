@@ -192,7 +192,7 @@ export const completeProfile = asyncHandler(async (req: Request, res: Response) 
     avatar_url: avatar,
     is_verified: true, 
     updated_at: new Date().toISOString(),
-    role: 'user'
+    role: 'USER' 
   });
 
   if (!finalUser) {

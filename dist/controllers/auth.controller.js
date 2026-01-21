@@ -159,7 +159,7 @@ exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) 
         avatar_url: avatar,
         is_verified: true,
         updated_at: new Date().toISOString(),
-        role: 'user'
+        role: 'USER'
     });
     if (!finalUser) {
         throw new Error("Impossible de créer ou de retrouver l'utilisateur après la mise à jour.");
