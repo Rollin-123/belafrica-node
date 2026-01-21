@@ -7,7 +7,6 @@ exports.completeProfile = exports.verifyOtp = exports.requestOtp = void 0;
 const supabase_1 = require("../utils/supabase");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
-const uuid_1 = require("uuid");
 const auth_service_1 = require("../services/auth.service");
 const geolocation_service_1 = require("../services/geolocation.service");
 // Fonction pour générer un code OTP simple
@@ -149,7 +148,6 @@ exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) 
         throw new Error('Le pseudo, le pays, la nationalité et la communauté sont requis.');
     }
     const finalUser = await authService.upsertUser({
-        id: (0, uuid_1.v4)(),
         phone_number: phoneNumber,
         country_code: countryCode,
         country_name: countryName,

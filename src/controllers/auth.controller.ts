@@ -181,7 +181,6 @@ export const completeProfile = asyncHandler(async (req: Request, res: Response) 
   }
 
   const finalUser = await authService.upsertUser({
-    id: uuidv4(), 
     phone_number: phoneNumber, 
     country_code: countryCode,
     country_name: countryName,
