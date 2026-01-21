@@ -125,7 +125,8 @@ exports.verifyOtp = (0, express_async_handler_1.default)(async (req, res) => {
         res.cookie('access_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            // 'none' est nécessaire pour les requêtes cross-domain (frontend/backend sur des domaines différents)
+            sameSite: 'none',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
         res.status(200).json({
@@ -176,7 +177,8 @@ exports.completeProfile = (0, express_async_handler_1.default)(async (req, res) 
     res.cookie('access_token', finalToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        // 'none' est nécessaire pour les requêtes cross-domain
+        sameSite: 'none',
         maxAge: 30 * 24 * 60 * 60 * 1000
     });
     res.status(200).json({

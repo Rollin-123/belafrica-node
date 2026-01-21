@@ -33,10 +33,15 @@ const allowedOrigins = [
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin) {
+      callback(null, true);
+     return;
+    }
+    if (allowedOrigins.includes(origin) || origin.endsWith('--belafrica-version1.netlify.app')) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.warn(`🚫 Origine CORS non autorisée bloquée: ${origin}`);
+      callback(new Error(`L'origine ${origin} n'est pas autorisée par la politique CORS.`));
     }
   },
   credentials: true,
