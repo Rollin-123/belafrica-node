@@ -1,10 +1,10 @@
 import { UserPayload } from './user';  
 
 
-declare module 'express' {  
+declare module 'express' { 
   interface Request {
     user?: UserPayload;
-    phoneNumber?: string; // Pour les tokens temporaires (auth.controller.ts)
-    requiredPermission?: string; // Pour admin.middleware.ts
+    phoneNumber?: string;  
+    requiredPermission?: string;  
   }
 }

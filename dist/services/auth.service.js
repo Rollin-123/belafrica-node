@@ -143,18 +143,57 @@ class AuthService {
      */
     async upsertUser(userData) {
         try {
-            const { data, error } = await supabase
+            const { data: user, error: upsertError } = await supabase
                 .from('users')
                 .upsert(userData, { onConflict: 'phone_number' })
                 .select()
                 .single();
-            if (error) {
-                console.error('❌ Erreur Supabase upsertUser:', error);
-                throw error;
+            if (upsertError) {
+                console.error('❌ Erreur Supabase upsertUser:', upsertError);
+                throw upsertError;
             }
-            return data;
+            // ✅ NOUVEAU : Logique pour rejoindre/créer la conversation de groupe
+            if (user) {
+                const communityId = user.community;
+                let { data: groupConversation, error: convError } = await supabase
+                    .from('conversations')
+                    .select('id')
+                    .eq('community', communityId)
+                    .eq('type', 'group')
+                    .single();
+                // PGRST116 = 0 rows, ce qui est normal si la conversation n'existe pas encore.
+                if (convError && convError.code !== 'PGRST116') {
+                    console.error("Erreur recherche conversation de groupe:", convError);
+                    throw convError;
+                }
+                // Si la conversation n'existe pas, on la crée
+                if (!groupConversation) {
+                    console.log(`💬 Création de la conversation de groupe pour la communauté: ${communityId}`);
+                    const { data: newConv, error: newConvError } = await supabase
+                        .from('conversations')
+                        .insert({
+                        name: `Groupe ${communityId}`,
+                        type: 'group',
+                        community: communityId,
+                        created_by: user.id
+                    })
+                        .select('id')
+                        .single();
+                    if (newConvError)
+                        throw newConvError;
+                    groupConversation = newConv;
+                }
+                // Ajouter l'utilisateur comme participant
+                const { error: participantError } = await supabase
+                    .from('conversation_participants')
+                    .upsert({ conversation_id: groupConversation.id, user_id: user.id }, { onConflict: 'conversation_id,user_id' });
+                if (participantError)
+                    throw participantError;
+            }
+            return user;
         }
         catch (error) {
+            console.error(`❌ Erreur serveur lors de la mise à jour du profil:`, error);
             throw new Error(`Erreur serveur lors de la mise à jour du profil.`);
         }
     }
