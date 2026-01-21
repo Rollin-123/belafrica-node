@@ -81,7 +81,7 @@ export const getMessages = async (req: Request, res: Response) => {
 export const sendMessage = async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { conversationId } = req.params;
-  const { encryptedContent, iv, replyToId, mentions } = req.body;  
+  const { encryptedContent, iv, replyToId, mentions } = req.body;
 
   if (!userId) {
     return res.status(401).json({ success: false, error: 'Non autorisé' });
@@ -95,7 +95,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     const messageData = {
       conversation_id: conversationId,
       user_id: userId,
-      encrypted_content: encryptedContent,
+      encrypted_content: encryptedContent,  
       iv: iv,
       reply_to_id: replyToId || null,
       mentions: mentions || null,  
@@ -103,7 +103,7 @@ export const sendMessage = async (req: Request, res: Response) => {
 
     // La politique RLS garantit que l'utilisateur est bien membre de la conversation.
     const { data: newMessage, error } = await supabase
-      .from('messages')
+      .from('messages') // Assurez-vous que c'est la bonne table
       .insert(messageData)
       .select('*, user:users(id, pseudo, avatar_url), mentions')
       .single();
@@ -112,7 +112,7 @@ export const sendMessage = async (req: Request, res: Response) => {
 
     // ✅ Diffuser le nouveau message à tous les clients dans la "room"
     getIo().to(conversationId).emit('newMessage', newMessage);
-    console.log(`📡 Message diffusé dans la conversation ${conversationId}`);
+    console.log(`📡 Message diffusé dans la conversation ${conversationId}:`, newMessage);
 
     res.status(201).json({ success: true, message: newMessage });
   } catch (error: any) {
@@ -127,7 +127,7 @@ export const sendMessage = async (req: Request, res: Response) => {
 export const editMessage = async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { messageId } = req.params;
-  const { encryptedContent, iv } = req.body;
+  const { encryptedContent, iv } = req.body;  
 
   if (!userId) return res.status(401).json({ success: false, error: 'Non autorisé' });
   if (!encryptedContent || !iv) return res.status(400).json({ success: false, error: 'Contenu chiffré manquant' });
@@ -152,7 +152,7 @@ export const editMessage = async (req: Request, res: Response) => {
     }
 
     const { data: updatedMessage, error } = await supabase
-      .from('messages')
+      .from('messages') // Assurez-vous que c'est la bonne table
       .update({ encrypted_content: encryptedContent, iv: iv, is_edited: true, updated_at: new Date().toISOString() })
       .eq('id', messageId)
       .eq('user_id', userId) 
@@ -201,7 +201,7 @@ export const deleteMessage = async (req: Request, res: Response) => {
     }
 
     const { data: deletedMessage, error } = await supabase
-      .from('messages')
+      .from('messages') // Assurez-vous que c'est la bonne table
       .update({ is_deleted: true, encrypted_content: null, iv: null })
       .eq('id', messageId)
       .eq('user_id', userId)  

@@ -88,7 +88,7 @@ const sendMessage = async (req, res) => {
         };
         // La politique RLS garantit que l'utilisateur est bien membre de la conversation.
         const { data: newMessage, error } = await supabase_1.supabase
-            .from('messages')
+            .from('messages') // Assurez-vous que c'est la bonne table
             .insert(messageData)
             .select('*, user:users(id, pseudo, avatar_url), mentions')
             .single();
@@ -96,7 +96,7 @@ const sendMessage = async (req, res) => {
             throw error;
         // ✅ Diffuser le nouveau message à tous les clients dans la "room"
         (0, socket_manager_1.getIo)().to(conversationId).emit('newMessage', newMessage);
-        console.log(`📡 Message diffusé dans la conversation ${conversationId}`);
+        console.log(`📡 Message diffusé dans la conversation ${conversationId}:`, newMessage);
         res.status(201).json({ success: true, message: newMessage });
     }
     catch (error) {
@@ -134,7 +134,7 @@ const editMessage = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Le délai de modification est dépassé.' });
         }
         const { data: updatedMessage, error } = await supabase_1.supabase
-            .from('messages')
+            .from('messages') // Assurez-vous que c'est la bonne table
             .update({ encrypted_content: encryptedContent, iv: iv, is_edited: true, updated_at: new Date().toISOString() })
             .eq('id', messageId)
             .eq('user_id', userId)
@@ -180,7 +180,7 @@ const deleteMessage = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Le délai de suppression est dépassé.' });
         }
         const { data: deletedMessage, error } = await supabase_1.supabase
-            .from('messages')
+            .from('messages') // Assurez-vous que c'est la bonne table
             .update({ is_deleted: true, encrypted_content: null, iv: null })
             .eq('id', messageId)
             .eq('user_id', userId)
