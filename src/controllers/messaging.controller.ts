@@ -88,10 +88,10 @@ export const sendMessage = async (req: Request, res: Response) => {
     return res.status(401).json({ success: false, error: 'Non autorisé' });
   }
 
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, errors: errors.array() });
-  }
+  // const errors = validationResult(req);
+  // if (!errors.isEmpty()) {
+  //   return res.status(400).json({ success: false, errors: errors.array() });
+  // }
 
   if (!encryptedContent || !iv) {
     return res.status(400).json({ success: false, error: 'Le contenu chiffré (encryptedContent) et le vecteur d\'initialisation (iv) sont requis.' });

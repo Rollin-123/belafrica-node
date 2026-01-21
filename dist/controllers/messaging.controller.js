@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.markMessagesAsRead = exports.deleteMessage = exports.editMessage = exports.sendMessage = exports.getMessages = exports.getConversations = void 0;
-const express_validator_1 = require("express-validator");
 const supabase_1 = require("../utils/supabase");
 const socket_manager_1 = require("../services/socket.manager");
 /**
@@ -75,10 +74,10 @@ const sendMessage = async (req, res) => {
     if (!userId) {
         return res.status(401).json({ success: false, error: 'Non autorisé' });
     }
-    const errors = (0, express_validator_1.validationResult)(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ success: false, errors: errors.array() });
-    }
+    // const errors = validationResult(req);
+    // if (!errors.isEmpty()) {
+    //   return res.status(400).json({ success: false, errors: errors.array() });
+    // }
     if (!encryptedContent || !iv) {
         return res.status(400).json({ success: false, error: 'Le contenu chiffré (encryptedContent) et le vecteur d\'initialisation (iv) sont requis.' });
     }
