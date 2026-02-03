@@ -31,7 +31,7 @@ const server = http_1.default.createServer(app);
 const PORT = process.env.PORT || 3000;
 const allowedOrigins = [
     'http://localhost:4200',
-    'https://belafrica-version1.netlify.app',
+    'https://belafrica.vercel.app',
     'https://belafrica-backend.onrender.com'
 ];
 const corsOptions = {
@@ -40,7 +40,8 @@ const corsOptions = {
             callback(null, true);
             return;
         }
-        if (allowedOrigins.includes(origin) || origin.endsWith('.netlify.app') || origin.endsWith('.onrender.com')) {
+        // if (allowedOrigins.includes(origin) || origin.endsWith('.netlify.app') || origin.endsWith('.onrender.com')) {
+        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com')) {
             callback(null, true);
         }
         else {
