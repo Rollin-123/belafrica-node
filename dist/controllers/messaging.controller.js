@@ -74,10 +74,6 @@ const sendMessage = async (req, res) => {
     if (!userId) {
         return res.status(401).json({ success: false, error: 'Non autorisé' });
     }
-    // const errors = validationResult(req);
-    // if (!errors.isEmpty()) {
-    //   return res.status(400).json({ success: false, errors: errors.array() });
-    // }
     if (!encryptedContent || !iv) {
         return res.status(400).json({ success: false, error: 'Le contenu chiffré (encryptedContent) et le vecteur d\'initialisation (iv) sont requis.' });
     }
@@ -92,9 +88,9 @@ const sendMessage = async (req, res) => {
         };
         // La politique RLS garantit que l'utilisateur est bien membre de la conversation.
         const { data: newMessage, error } = await supabase_1.supabase
-            .from('messages')
+            .from('messages') // Assurez-vous que c'est la bonne table
             .insert(messageData)
-            .select('*, user:users!messages_sender_id_fkey(id, pseudo, avatar_url), mentions')
+            .select('*, user:users!messages_sender_id_fkey(id, pseudo, avatar_url), mentions') // ✅ CORRECTION: Utiliser la bonne relation
             .single();
         if (error)
             throw error;
@@ -138,8 +134,8 @@ const editMessage = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Le délai de modification est dépassé.' });
         }
         const { data: updatedMessage, error } = await supabase_1.supabase
-            .from('messages')
-            .update({ encrypted_content: encryptedContent, iv: iv, is_edited: true })
+            .from('messages') // Assurez-vous que c'est la bonne table
+            .update({ encrypted_content: encryptedContent, iv: iv, is_edited: true }) // updated_at est géré par le trigger
             .eq('id', messageId)
             .eq('user_id', userId)
             .select('*, user:users(id, pseudo, avatar_url)')
@@ -184,8 +180,8 @@ const deleteMessage = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Le délai de suppression est dépassé.' });
         }
         const { data: deletedMessage, error } = await supabase_1.supabase
-            .from('messages')
-            .update({ is_deleted: true, encrypted_content: 'Message supprimé', iv: 'deleted' })
+            .from('messages') // Assurez-vous que c'est la bonne table
+            .update({ is_deleted: true, encrypted_content: 'Message supprimé', iv: 'deleted' }) // Mettre des placeholders pour respecter NOT NULL
             .eq('id', messageId)
             .eq('user_id', userId)
             .select('id, conversation_id')
