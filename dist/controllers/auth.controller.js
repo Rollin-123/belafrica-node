@@ -45,6 +45,7 @@ exports.requestOtp = (0, express_async_handler_1.default)(async (req, res) => {
     // =================================================
     // ✅ NOUVELLE LOGIQUE DE GÉO-VALIDATION
     // =================================================
+    // En production, cette vérification est toujours active. Le .trim() est important pour la robustesse.
     if (process.env.NODE_ENV?.trim() === 'production') {
         // 1. Obtenir l'IP réelle de l'utilisateur (Render utilise 'x-forwarded-for')
         const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.ip;
