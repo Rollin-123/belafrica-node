@@ -98,7 +98,6 @@ export class EncryptionService {
   }
 }
 
-// Singleton
 let encryptionInstance: EncryptionService;
 
 export function getEncryptionService(): EncryptionService {

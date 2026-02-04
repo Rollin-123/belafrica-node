@@ -95,7 +95,6 @@ class EncryptionService {
     }
 }
 exports.EncryptionService = EncryptionService;
-// Singleton
 let encryptionInstance;
 function getEncryptionService() {
     if (!encryptionInstance) {

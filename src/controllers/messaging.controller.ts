@@ -78,7 +78,7 @@ export const getConversations = async (req: any, res: Response) => {
     // Le front-end s'attend à `participantsDetails`, mais notre RPC renvoie `participants`. On mappe ici pour la compatibilité.
     const formattedConversations = (allUserConversations || []).map((conv: any) => ({
       ...conv,
-      participantsDetails: conv.participants || []
+      participantsDetails: conv.participants || [],
     }));
 
     res.status(200).json({ success: true, conversations: formattedConversations });

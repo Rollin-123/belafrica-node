@@ -10,7 +10,6 @@ import jwt from 'jsonwebtoken';
 import { CorsOptions } from 'cors';
 
 let io: Server;
-
 interface AuthenticatedSocket extends Socket {
   user?: {
     userId: string;
