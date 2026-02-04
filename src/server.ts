@@ -27,9 +27,7 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;  
 
-// Lire les origines autorisées depuis les variables d'environnement.
-// Séparez les URLs par des virgules dans votre variable d'environnement sur Render.
-const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',');
+const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map(origin => origin.trim());
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
