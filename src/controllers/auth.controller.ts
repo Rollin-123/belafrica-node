@@ -22,6 +22,7 @@ const generateOtpCode = (length = 6): string => {
 const authService = new AuthService();
 const geolocationService = getGeolocationService();
 
+
 const phonePrefixToCountryISO: { [key: string]: string } = {
   '+49': 'DE',
   '+32': 'BE', 
@@ -51,8 +52,7 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
   // =================================================
   // ✅ NOUVELLE LOGIQUE DE GÉO-VALIDATION
   // =================================================
-  // Cette vérification est active sauf si GEO_BYPASS_IN_DEV est 'true'
-  if (process.env.GEO_BYPASS_IN_DEV !== 'true') { 
+  if (process.env.NODE_ENV?.trim() === 'production') { 
     // 1. Obtenir l'IP réelle de l'utilisateur (Render utilise 'x-forwarded-for')
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip;
     const locationData = await geolocationService.detectLocationByIP(ip);
