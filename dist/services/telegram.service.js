@@ -26,12 +26,14 @@ const initializeTelegramBot = (app) => {
     }
     // Utiliser un webhook en production, polling en développement
     if (process.env.NODE_ENV === 'production') {
+        console.log('✅ Mode Production détecté. Configuration du Webhook Telegram...');
         const webhookUrl = `${process.env.BACKEND_URL}/api/telegram-webhook/${token}`;
         bot.setWebHook(webhookUrl)
             .then(() => console.log(`✅ Webhook Telegram configuré sur: ${webhookUrl}`))
             .catch(err => console.error('❌ Erreur configuration webhook:', err));
     }
     else {
+        console.log('⚠️ Mode Développement détecté. Démarrage du Polling Telegram...');
         bot.startPolling();
     }
     console.log('🤖 Bot Telegram démarré avec la logique de deep linking...');
