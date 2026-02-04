@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAppConstants = void 0;
+exports.handleTelegramWebhook = exports.getAppConstants = void 0;
 const constants_1 = require("../utils/constants");
+const telegram_service_1 = require("../services/telegram.service");
 /**
  * Expose les constantes publiques de l'application au frontend.
  */
@@ -14,4 +15,15 @@ const getAppConstants = (req, res) => {
     res.status(200).json({ success: true, data: publicConstants });
 };
 exports.getAppConstants = getAppConstants;
+const handleTelegramWebhook = (req, res) => {
+    if (telegram_service_1.bot) {
+        telegram_service_1.bot.processUpdate(req.body);
+        res.sendStatus(200);
+    }
+    else {
+        console.error('⚠️ Tentative de webhook mais le bot n\'est pas initialisé.');
+        res.sendStatus(500);
+    }
+};
+exports.handleTelegramWebhook = handleTelegramWebhook;
 //# sourceMappingURL=app.controller.js.map

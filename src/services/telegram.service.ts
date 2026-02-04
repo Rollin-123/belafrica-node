@@ -12,13 +12,23 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
   console.warn('⚠️ TELEGRAM_BOT_TOKEN non défini. Le bot Telegram ne démarrera pas.');
 }
-const bot = token ? new TelegramBot(token, { polling: true }) : null;
+const bot = token ? new TelegramBot(token) : null;  
 const authService = new AuthService();
 
-export const initializeTelegramBot = () => {
-  if (!bot) {
+export const initializeTelegramBot = (app: any) => {
+  if (!bot || !token) {
     console.warn('⚠️ Bot Telegram non initialisé (token manquant)');
     return;
+  }
+
+  // Utiliser un webhook en production, polling en développement
+  if (process.env.NODE_ENV === 'production') {
+    const webhookUrl = `${process.env.BACKEND_URL}/api/telegram-webhook/${token}`;
+    bot.setWebHook(webhookUrl)
+      .then(() => console.log(`✅ Webhook Telegram configuré sur: ${webhookUrl}`))
+      .catch(err => console.error('❌ Erreur configuration webhook:', err));
+  } else {
+    bot.startPolling();  
   }
 
   console.log('🤖 Bot Telegram démarré avec la logique de deep linking...');

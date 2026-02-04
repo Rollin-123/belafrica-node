@@ -5,6 +5,7 @@
     */
 import { Request, Response } from 'express';
 import { APP_CONSTANTS } from '../utils/constants';
+import { bot } from '../services/telegram.service';
 
 
 /**
@@ -17,4 +18,14 @@ export const getAppConstants = (req: Request, res: Response) => {
     PHONE_COUNTRY_MAPPING: APP_CONSTANTS.PHONE_COUNTRY_MAPPING,  
   };
   res.status(200).json({ success: true, data: publicConstants });
+};
+
+export const handleTelegramWebhook = (req: Request, res: Response) => {
+  if (bot) {
+    bot.processUpdate(req.body);
+    res.sendStatus(200);
+  } else {
+    console.error('⚠️ Tentative de webhook mais le bot n\'est pas initialisé.');
+    res.sendStatus(500);
+  }
 };

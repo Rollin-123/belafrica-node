@@ -29,19 +29,16 @@ dotenv_1.default.config();
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const PORT = process.env.PORT || 3000;
-const allowedOrigins = [
-    'http://localhost:4200',
-    'https://belafrica.vercel.app',
-    'https://belafrica-backend.onrender.com'
-];
+// Lire les origines autorisées depuis les variables d'environnement.
+// Séparez les URLs par des virgules dans votre variable d'environnement sur Render.
+const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',');
 const corsOptions = {
     origin: (origin, callback) => {
         if (!origin) {
             callback(null, true);
             return;
         }
-        // if (allowedOrigins.includes(origin) || origin.endsWith('.netlify.app') || origin.endsWith('.onrender.com')) {
-        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com')) {
+        if (allowedOrigins.includes(origin)) {
             callback(null, true);
         }
         else {
@@ -57,6 +54,7 @@ app.use((0, cors_1.default)(corsOptions));
 app.use((0, cookie_parser_1.default)());
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
+app.set('trust proxy', 1);
 const limiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000,
     max: 1000
@@ -72,6 +70,7 @@ app.use('/api/debug', debug_routes_1.default);
 app.use('/api/posts', post_routes_1.default);
 app.use('/api/admin', admin_routes_1.default);
 app.use('/api/messaging', messaging_routes_1.default);
+app.post(`/api/telegram-webhook/${process.env.TELEGRAM_BOT_TOKEN}`, app_controller_1.handleTelegramWebhook);
 app.get('/api/health', async (req, res) => {
     try {
         const { error } = await supabase_1.supabase.from('users').select('id').limit(1);
@@ -94,7 +93,7 @@ app.use('*', (req, res) => {
 server.listen(PORT, () => {
     console.log(`✅ Serveur HTTP et Sockets démarrés sur le port ${PORT}`);
     console.log(`🚀 Serveur BELAFRICA démarré sur le port ${PORT}`);
-    (0, telegram_service_1.initializeTelegramBot)();
+    (0, telegram_service_1.initializeTelegramBot)(app);
     console.log(`🌍 URL: https://belafrica-backend.onrender.com`);
     console.log(`📍 Test géolocalisation: GET /api/debug/geo`);
     console.log(`🔐 Test OTP: POST /api/auth/request-otp`);
