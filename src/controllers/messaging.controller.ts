@@ -11,37 +11,67 @@ import { getIo } from '../services/socket.manager';
 /**
  * ✅ Récupère toutes les conversations de l'utilisateur authentifié.
  */
-export const getConversations = async (req: Request, res: Response) => {  
-  const userId = req.user?.id;  
-  if (!userId) {
-    return res.status(401).json({ success: false, error: 'Non autorisé' });
+export const getConversations = async (req: any, res: Response) => {
+  const userId = req.user?.id;
+  const userCommunity = req.user?.community;
+
+  if (!userId || !userCommunity) {
+    return res.status(400).json({ success: false, error: "Utilisateur ou communauté non identifié." });
   }
 
   try {
-    // Récupérer les IDs des conversations de l'utilisateur
-    const { data: participantData, error: participantError } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id')
-      .eq('user_id', userId);
+    // --- Étape 1: S'assurer que la conversation de groupe existe ---
+    let { data: groupConversation, error: groupError } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('type', 'group')
+      .eq('community', userCommunity)
+      .single();
 
-    if (participantError) throw participantError;
-
-    if (!participantData || participantData.length === 0) {
-      return res.status(200).json({ success: true, conversations: [] });
+    if (groupError && groupError.code !== 'PGRST116') { // PGRST116 = no rows found, ce qui est normal
+      throw new Error(`Erreur lors de la recherche de la conversation de groupe: ${groupError.message}`);
     }
 
-    const conversationIds = participantData.map((p: { conversation_id: string }) => p.conversation_id);
+    // Si la conversation n'existe pas, on la crée
+    if (!groupConversation) {
+      console.log(`🔧 La conversation de groupe pour "${userCommunity}" n'existe pas. Création...`);
+      const { data: newGroup, error: createError } = await supabase
+        .from('conversations')
+        .insert({ type: 'group', name: `Groupe ${userCommunity}`, community: userCommunity, created_by: userId })
+        .select('id')
+        .single();
 
-    // Récupérer les détails de ces conversations
-    const { data: conversations, error: conversationsError } = await supabase
-      .from('conversations')
-      .select('*, conversation_participants(user_id, users(id, pseudo, avatar_url, community))')  
-      .in('id', conversationIds);
+      if (createError || !newGroup) {
+        console.error("❌ Erreur lors de la création de la conversation de groupe:", createError);
+        throw new Error("Impossible de créer la conversation de groupe.");
+      }
+      groupConversation = newGroup;
+      console.log(`✅ Conversation de groupe créée avec l'ID: ${groupConversation.id}`);
+    }
 
-    if (conversationsError) throw conversationsError;
+    // --- Étape 2: S'assurer que l'utilisateur est membre de la conversation de groupe ---
+    const { data: participant, error: participantError } = await supabase
+      .from('conversation_participants')
+      .select('user_id')
+      .eq('conversation_id', groupConversation.id)
+      .eq('user_id', userId)
+      .single();
 
+    if (participantError && participantError.code !== 'PGRST116') {
+      throw new Error(`Erreur lors de la vérification de la participation: ${participantError.message}`);
+    }
 
-    res.status(200).json({ success: true, conversations });
+    if (!participant) {
+      console.log(`➕ Ajout de l'utilisateur ${userId} à la conversation de groupe ${groupConversation.id}`);
+      const { error: joinError } = await supabase.from('conversation_participants').insert({ conversation_id: groupConversation.id, user_id: userId });
+      if (joinError) console.error("❌ Erreur lors de l'ajout de l'utilisateur à la conversation:", joinError);
+    }
+
+    // --- Étape 3: Récupérer toutes les conversations de l'utilisateur ---
+    const { data: allUserConversations, error: rpcError } = await supabase.rpc('get_user_conversations_with_details', { p_user_id: userId });
+    if (rpcError) throw rpcError;
+
+    res.status(200).json({ success: true, conversations: allUserConversations || [] });
   } catch (error: any) {
     console.error("Erreur lors de la récupération des conversations:", error);
     res.status(500).json({ success: false, error: error.message });
