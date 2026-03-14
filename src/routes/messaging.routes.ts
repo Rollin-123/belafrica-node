@@ -1,20 +1,26 @@
-/* 
+/*
     * BELAFRICA - Plateforme diaspora africaine
-    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Copyright (c) 2025 Rollin Loic Tianga. Tous droits reserves.
     * Code source confidentiel - Usage interdit sans autorisation
     */
 import { Router } from 'express';
 import { body, param, validationResult } from 'express-validator';
-import { getConversations, getMessages, sendMessage, editMessage, deleteMessage } from '../controllers/messaging.controller';
+import {
+  getConversations,
+  getMessages,
+  sendMessage,
+  editMessage,
+  deleteMessage,
+  markMessagesAsRead
+} from '../controllers/messaging.controller';
 import { protect as authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// Middleware pour logger les erreurs de validation
 const logValidationErrors = (req: any, res: any, next: any) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    console.error('❌ Erreurs de validation:', JSON.stringify(errors.array()));
+    console.error('Erreurs de validation:', JSON.stringify(errors.array()));
     return res.status(400).json({ errors: errors.array() });
   }
   next();
@@ -37,5 +43,6 @@ router.post(
 );
 router.put('/messages/:messageId', authenticate, editMessage);
 router.delete('/messages/:messageId', authenticate, deleteMessage);
+router.post('/conversations/:conversationId/read', authenticate, markMessagesAsRead);
 
 export default router;
