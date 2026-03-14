@@ -1,6 +1,6 @@
 /* 
     * BELAFRICA - Plateforme diaspora africaine
-    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Copyright (c) 2025 Rollin Loic Tianga. Tous droits reserves.
     * Code source confidentiel - Usage interdit sans autorisation
     */
 import { Request, Response } from 'express';
@@ -11,7 +11,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { AuthService } from '../services/auth.service';
 import { getGeolocationService } from '../services/geolocation.service';
 
-// Fonction pour générer un code OTP simple
 const generateOtpCode = (length = 6): string => {
   const digits = '0123456789';
   let code = '';
@@ -22,57 +21,49 @@ const generateOtpCode = (length = 6): string => {
 const authService = new AuthService();
 const geolocationService = getGeolocationService();
 
-
 const phonePrefixToCountryISO: { [key: string]: string } = {
   '+49': 'DE',
-  '+32': 'BE', 
-  '+375': 'BY', 
-  '+1': 'CA',  
+  '+32': 'BE',
+  '+375': 'BY',
+  '+1': 'CA',
   '+34': 'ES',
-  '+33': 'FR', 
-  '+39': 'IT', 
-  '+41': 'CH', 
+  '+33': 'FR',
+  '+39': 'IT',
+  '+41': 'CH',
   '+44': 'GB',
-  '+7': 'RU' 
+  '+7': 'RU'
 };
 
-/**
- * Demande un code OTP (One-Time Password) via Supabase Auth.
- * La géolocalisation est vérifiée ici.
- */
 export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
   const { phoneNumber, countryCode } = req.body;
   const fullPhoneNumber = `${countryCode}${phoneNumber.replace(/\s/g, '')}`;
 
   if (!phoneNumber || !countryCode) {
     res.status(400);
-    throw new Error('Le numéro de téléphone et le code pays sont requis.');
+    throw new Error('Le numero de telephone et le code pays sont requis.');
   }
 
-  // =================================================
-  // ✅ NOUVELLE LOGIQUE DE GÉO-VALIDATION
-  // =================================================
-  // En production, cette vérification est toujours active.
-  if (process.env.NODE_ENV?.trim() === 'production') {
-    // 1. Obtenir l'IP réelle de l'utilisateur (Render utilise 'x-forwarded-for')
+  // GEO-VALIDATION : active uniquement si GEO_VALIDATION_ENABLED=true dans Render
+  const geoEnabled = process.env.GEO_VALIDATION_ENABLED === 'true';
+
+  if (process.env.NODE_ENV?.trim() === 'production' && geoEnabled) {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip;
     const locationData = await geolocationService.detectLocationByIP(ip);
 
-    // 2. Vérifier si un VPN/Proxy est utilisé
     if (locationData.isProxy) {
       res.status(403);
-      throw new Error('L\'utilisation de VPNs, proxys ou services d\'anonymisation est interdite pour des raisons de sécurité.');
+      throw new Error('L\'utilisation de VPNs ou proxys est interdite pour des raisons de securite.');
     }
 
-    // 3. Vérifier la correspondance entre le pays de l'IP et le pays du numéro de téléphone
     const isValidMatch = geolocationService.validatePhoneCountryMatch(countryCode, locationData.countryCode);
     if (!isValidMatch) {
       res.status(403);
-      throw new Error(`Votre localisation détectée (${locationData.country}) ne correspond pas au pays de votre numéro de téléphone. Pour des raisons de sécurité, veuillez désactiver tout VPN et réessayer.`);
+      throw new Error('Votre localisation ne correspond pas au pays de votre numero de telephone.');
     }
+  } else {
+    console.log('Info: Geo-validation desactivee (GEO_VALIDATION_ENABLED != true)');
   }
 
-  // ✅ NOUVEAU : Vérifier si l'utilisateur existe déjà pour personnaliser l'expérience
   const { data: existingUser } = await supabase
     .from('users')
     .select('id, is_verified')
@@ -80,30 +71,24 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
     .single();
 
   const userExists = !!(existingUser && existingUser.is_verified);
-
-  // 1. Générer le code et le token
   const otpCode = generateOtpCode();
-
-  // 2. Sauvegarder l'OTP et le token via le service
   const { token } = await authService.saveOTPWithToken(fullPhoneNumber, otpCode);
 
   if (!token) {
-    throw new Error("Impossible de générer un token de vérification.");
+    throw new Error('Impossible de generer un token de verification.');
   }
 
-  // 3. Créer les liens de deep linking
   const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'Belafrica_bot';
   const telegramLink = `https://t.me/${botUsername}?start=${token}`;
   const mobileLink = `tg://resolve?domain=${botUsername}&start=${token}`;
 
-  // 4. Retourner une réponse riche pour le frontend
   res.status(200).json({
     success: true,
-    message: userExists 
-        ? 'Utilisateur reconnu. Veuillez vérifier votre identité pour vous connecter.' 
-        : 'OTP généré. Cliquez sur le lien pour recevoir votre code.',
-    requiresBotStart: true, 
-    userExists: userExists,  
+    message: userExists
+      ? 'Utilisateur reconnu. Veuillez verifier votre identite pour vous connecter.'
+      : 'OTP genere. Cliquez sur le lien pour recevoir votre code.',
+    requiresBotStart: true,
+    userExists: userExists,
     token: token,
     links: {
       web: telegramLink,
@@ -113,76 +98,70 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
-/**
- * Vérifie un code OTP et retourne une session (token JWT).
- */
 export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
-    const { phoneNumber, code } = req.body;
+  const { phoneNumber, code } = req.body;
 
-    if (!phoneNumber || !code) {
-        res.status(400);
-        throw new Error('Numéro de téléphone et code OTP requis.');
-    }
-    // 1. Vérifier l'OTP via le service
-    const otpData = await authService.verifyOTP(phoneNumber, code);
+  if (!phoneNumber || !code) {
+    res.status(400);
+    throw new Error('Numero de telephone et code OTP requis.');
+  }
 
-    if (!otpData) {
-        res.status(401);
-        throw new Error('Code OTP invalide ou expiré.');
-    }
+  const otpData = await authService.verifyOTP(phoneNumber, code);
 
-    // 3. Check if user already exists and is verified
-    const { data: existingUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('phone_number', phoneNumber)
-        .single();
+  if (!otpData) {
+    res.status(401);
+    throw new Error('Code OTP invalide ou expire.');
+  }
 
-        
-    if (existingUser && existingUser.is_verified) {
-        const token = jwt.sign({ userId: existingUser.id }, process.env.JWT_SECRET!, {
-            expiresIn: '7d',
-        });
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('*')
+    .eq('phone_number', phoneNumber)
+    .single();
 
-        res.status(200).json({
-            success: true,
-            message: 'Connexion réussie.',
-            user: existingUser,
-            token: token,  
-        });
-        return;
-    }
-
-    const tempToken = jwt.sign(
-        { phoneNumber: phoneNumber, temp: true }, 
-        process.env.TEMP_JWT_SECRET || process.env.JWT_SECRET!, 
-        { expiresIn: '15m' }
-    );
-
-    res.json({
-        success: true,
-        message: 'Code vérifié avec succès.',
-        tempToken,
+  if (existingUser && existingUser.is_verified) {
+    const token = jwt.sign({ userId: existingUser.id }, process.env.JWT_SECRET!, {
+      expiresIn: '7d',
     });
+    res.status(200).json({
+      success: true,
+      message: 'Connexion reussie.',
+      user: existingUser,
+      token: token,
+    });
+    return;
+  }
+
+  const tempToken = jwt.sign(
+    { phoneNumber: phoneNumber, temp: true },
+    process.env.TEMP_JWT_SECRET || process.env.JWT_SECRET!,
+    { expiresIn: '15m' }
+  );
+
+  res.json({
+    success: true,
+    message: 'Code verifie avec succes.',
+    tempToken,
+  });
 });
 
 export const completeProfile = asyncHandler(async (req: Request, res: Response) => {
-  const phoneNumber = req.phoneNumber;  
+  const phoneNumber = req.phoneNumber;
 
   if (!phoneNumber) {
     res.status(401);
-    throw new Error('Token invalide ou session expirée.');
+    throw new Error('Token invalide ou session expiree.');
   }
 
   const { countryCode, countryName, nationality, nationalityName, pseudo, email, avatar, community } = req.body;
 
   if (!pseudo || !countryName || !nationalityName || !community) {
     res.status(400);
-    throw new Error('Le pseudo, le pays, la nationalité et la communauté sont requis.');
+    throw new Error('Le pseudo, le pays, la nationalite et la communaute sont requis.');
   }
 
   const finalUser = await authService.upsertUser({
-    phone_number: phoneNumber, 
+    phone_number: phoneNumber,
     country_code: countryCode,
     country_name: countryName,
     nationality: nationality,
@@ -191,25 +170,25 @@ export const completeProfile = asyncHandler(async (req: Request, res: Response) 
     pseudo: pseudo,
     email: email,
     avatar_url: avatar,
-    is_verified: true, 
+    is_verified: true,
     updated_at: new Date().toISOString(),
-    role: 'USER' 
+    role: 'USER'
   });
 
   if (!finalUser) {
-    throw new Error("Impossible de créer ou de retrouver l'utilisateur après la mise à jour.");
+    throw new Error('Impossible de creer ou de retrouver l\'utilisateur apres la mise a jour.');
   }
 
   const finalToken = jwt.sign(
-      { userId: finalUser.id },
-      process.env.JWT_SECRET!,
-      { expiresIn: '30d' }
+    { userId: finalUser.id },
+    process.env.JWT_SECRET!,
+    { expiresIn: '30d' }
   );
-  
-    res.status(200).json({
-        success: true,
-        message: 'Profil créé avec succès.',
-        user: finalUser,
-        token: finalToken, // Retourne le token dans le corps de la réponse
-    });
+
+  res.status(200).json({
+    success: true,
+    message: 'Profil cree avec succes.',
+    user: finalUser,
+    token: finalToken,
+  });
 });
