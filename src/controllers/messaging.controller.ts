@@ -53,7 +53,7 @@ export const getConversations = async (req: any, res: Response) => {
     const { data: participant, error: participantError } = await supabase
       .from('conversation_participants')
       .select('*')
-      .eq('conversation_id', groupConversation.id!) // groupConversation existera forcément ici
+      .eq('conversation_id', groupConversation.id!)  
       .eq('user_id', userId)
       .single();
 
@@ -71,7 +71,6 @@ export const getConversations = async (req: any, res: Response) => {
     }
 
     // --- Étape 4: Récupérer toutes les conversations de l'utilisateur (y compris la nouvelle) ---
-    // CET APPEL FONCTIONNERA MAINTENANT CAR LA FONCTION A ÉTÉ CRÉÉE DANS LA DB
     const { data: allUserConversations, error: fetchError } = await supabase.rpc('get_user_conversations_with_details', { p_user_id: userId });
     if (fetchError) throw fetchError;
 
