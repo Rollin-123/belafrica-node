@@ -1,7 +1,7 @@
 // server.ts 
 /* 
     * BELAFRICA - Plateforme diaspora africaine
-    * Copyright © 2025 Rollin Loic Tianga. Tous droits réservés.
+    * Copyright (c) 2025 Rollin Loic Tianga. Tous droits reserves.
     * Code source confidentiel - Usage interdit sans autorisation
     */
 import express from 'express';
@@ -17,7 +17,8 @@ import adminRoutes from './routes/admin.routes';
 import { initializeTelegramBot } from './services/telegram.service';
 import { getAppConstants, handleTelegramWebhook } from './controllers/app.controller';
 import messagingRoutes from './routes/messaging.routes';
-import http from 'http';  
+import contactsRoutes from './routes/contacts.routes';
+import http from 'http';
 import { initializeSocketManager } from './services/socket.manager';
 import cookieParser from 'cookie-parser';
 
@@ -25,7 +26,7 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 3000;  
+const PORT = process.env.PORT || 3000;
 
 const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map(origin => origin.trim());
 
@@ -33,13 +34,13 @@ const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
     if (!origin) {
       callback(null, true);
-     return;
+      return;
     }
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.warn(`🚫 Origine CORS non autorisée bloquée: ${origin}`);
-      callback(new Error(`L'origine ${origin} n'est pas autorisée par la politique CORS.`));
+      console.warn('Origine CORS non autorisee bloquee: ' + origin);
+      callback(new Error('L\'origine ' + origin + ' n\'est pas autorisee par la politique CORS.'));
     }
   },
   credentials: true,
@@ -49,35 +50,36 @@ initializeSocketManager(server, corsOptions);
 app.use(helmet());
 app.use(cors(corsOptions));
 app.use(cookieParser());
-app.use(express.json({ limit: '10mb' })); 
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));  
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.set('trust proxy', 1);
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,  
-  max: 1000  
+  windowMs: 15 * 60 * 1000,
+  max: 1000
 });
 app.use('/api/', limiter);
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} ${req.method} ${req.url} - IP: ${req.ip}`);
+app.use((req: any, res: any, next: any) => {
+  console.log(new Date().toISOString() + ' ' + req.method + ' ' + req.url + ' - IP: ' + req.ip);
   next();
 });
+
 app.get('/api/constants', getAppConstants);
 app.use('/api/auth', authRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/messaging', messagingRoutes);
+app.use('/api/contacts', contactsRoutes);  // ✅ NOUVEAU
 
-app.post(`/api/telegram-webhook/${process.env.TELEGRAM_BOT_TOKEN}`, handleTelegramWebhook);  
+app.post('/api/telegram-webhook/' + process.env.TELEGRAM_BOT_TOKEN, handleTelegramWebhook);
 
 app.get('/api/health', async (req, res) => {
   try {
     const { error } = await supabase.from('users').select('id').limit(1);
-    const supabaseStatus = error ? `ERROR: ${error.message}` : 'CONNECTED';
-    
-    res.json({ 
+    const supabaseStatus = error ? 'ERROR: ' + error.message : 'CONNECTED';
+    res.json({
       status: 'OK',
       timestamp: new Date().toISOString(),
       supabase: supabaseStatus
@@ -86,17 +88,16 @@ app.get('/api/health', async (req, res) => {
     res.status(500).json({ status: 'ERROR', error: error.message });
   }
 });
+
 app.use('*', (req, res) => {
-  res.status(404).json({ 
-    error: `Route non trouvée: ${req.method} ${req.originalUrl}`
+  res.status(404).json({
+    error: 'Route non trouvee: ' + req.method + ' ' + (req as any).originalUrl
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`✅ Serveur HTTP et Sockets démarrés sur le port ${PORT}`);
-  console.log(`🚀 Serveur BELAFRICA démarré sur le port ${PORT}`);
-  initializeTelegramBot(app); 
-  console.log(`🌍 URL: https://belafrica-backend.onrender.com`);
-  console.log(`📍 Test géolocalisation: GET /api/debug/geo`);
-  console.log(`🔐 Test OTP: POST /api/auth/request-otp`);
+  console.log('Serveur HTTP et Sockets demarres sur le port ' + PORT);
+  console.log('Serveur BELAFRICA demarre sur le port ' + PORT);
+  initializeTelegramBot(app);
+  console.log('URL: https://belafrica-backend.onrender.com');
 });
