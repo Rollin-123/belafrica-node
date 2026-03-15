@@ -7,7 +7,6 @@ import { Request, Response } from 'express';
 import { supabase } from '../utils/supabase';
 import jwt from 'jsonwebtoken';
 import asyncHandler from 'express-async-handler';
-import { v4 as uuidv4 } from 'uuid';
 import { AuthService } from '../services/auth.service';
 import { getGeolocationService } from '../services/geolocation.service';
 
