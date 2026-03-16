@@ -53,6 +53,56 @@ export const searchUserByPhone = async (req: Request, res: Response) => {
   }
 };
 
+
+// POST /api/contacts/search-pseudo
+// Rechercher un membre par pseudo dans la même communauté
+export const searchUserByPseudo = async (req: Request, res: Response) => {
+  const currentUserId = req.user?.id;
+  const currentUserCommunity = req.user?.community;
+  const { pseudo } = req.body;
+
+  if (!currentUserId) return res.status(401).json({ success: false, error: 'Non autorise' });
+  if (!pseudo || pseudo.length < 2) return res.status(400).json({ success: false, error: 'Pseudo trop court' });
+
+  try {
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, pseudo, avatar_url, community, nationality_name, country_name, is_verified')
+      .ilike('pseudo', `%${pseudo}%`)         // recherche insensible à la casse
+      .eq('community', currentUserCommunity)   // uniquement même communauté
+      .neq('id', currentUserId)               // exclure soi-même
+      .eq('is_verified', true)
+      .limit(20);
+
+    if (error) throw error;
+
+    if (!users || users.length === 0) {
+      return res.status(200).json({ success: true, users: [] });
+    }
+
+    // Enrichir avec le statut de contact
+    const enriched = await Promise.all(users.map(async (user: any) => {
+      const { data: existingContact } = await supabase
+        .from('contacts')
+        .select('id, status')
+        .eq('user_id', currentUserId)
+        .eq('contact_user_id', user.id)
+        .single();
+
+      return {
+        ...user,
+        isAlreadyContact: !!existingContact && existingContact.status === 'active',
+        isBlocked: existingContact?.status === 'blocked'
+      };
+    }));
+
+    res.status(200).json({ success: true, users: enriched });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+
 // POST /api/contacts/add
 // Ajouter un contact
 export const addContact = async (req: Request, res: Response) => {

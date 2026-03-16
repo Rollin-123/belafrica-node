@@ -191,3 +191,63 @@ export const completeProfile = asyncHandler(async (req: Request, res: Response) 
     token: finalToken,
   });
 });
+
+export const getProfile = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    res.status(401);
+    throw new Error('Non autorisé.');
+  }
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error || !user) {
+    res.status(404);
+    throw new Error('Utilisateur non trouvé.');
+  }
+
+  res.status(200).json({ success: true, user });
+});
+
+export const updateProfile = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    res.status(401);
+    throw new Error('Non autorisé.');
+  }
+
+  const { pseudo, bio, gender, profession, interests, avatar_url } = req.body;
+
+  // Validation
+  if (pseudo !== undefined && (typeof pseudo !== 'string' || pseudo.trim().length < 2)) {
+    res.status(400);
+    throw new Error('Le pseudo doit contenir au moins 2 caractères.');
+  }
+
+  // Construire l'objet de mise à jour (seulement les champs fournis)
+  const updateData: any = { updated_at: new Date().toISOString() };
+  if (pseudo !== undefined) updateData.pseudo = pseudo.trim();
+  if (bio !== undefined) updateData.bio = bio;
+  if (gender !== undefined) updateData.gender = gender;
+  if (profession !== undefined) updateData.profession = profession;
+  if (interests !== undefined) updateData.interests = interests;
+  if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
+
+  const { data: updatedUser, error } = await supabase
+    .from('users')
+    .update(updateData)
+    .eq('id', userId)
+    .select('*')
+    .single();
+
+  if (error || !updatedUser) {
+    res.status(500);
+    throw new Error('Impossible de mettre à jour le profil: ' + error?.message);
+  }
+
+  res.status(200).json({ success: true, user: updatedUser });
+});

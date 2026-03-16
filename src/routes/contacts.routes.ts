@@ -7,6 +7,7 @@ import { body, param } from 'express-validator';
 import { protect } from '../middleware/auth.middleware';
 import {
   searchUserByPhone,
+  searchUserByPseudo,
   addContact,
   getContacts,
   removeContact,
@@ -16,10 +17,15 @@ import {
 
 const router = Router();
 
-// Rechercher un utilisateur par numéro de téléphone
+// Rechercher par numéro de téléphone
 router.post('/search', protect, [
-  body('phone').isString().notEmpty().withMessage('Numero de telephone requis')
+  body('phone').isString().notEmpty().withMessage('Numéro requis')
 ], searchUserByPhone);
+
+// Rechercher par pseudo (membres de la même communauté)
+router.post('/search-pseudo', protect, [
+  body('pseudo').isString().isLength({ min: 2 }).withMessage('Pseudo trop court')
+], searchUserByPseudo);
 
 // Lister mes contacts
 router.get('/', protect, getContacts);
