@@ -32,10 +32,10 @@ router.post(
   '/conversations/:conversationId/messages',
   authenticate,
   [
-    param('conversationId').isUUID(),
+    param('conversationId').isString().notEmpty(),
     body('encryptedContent').isString().notEmpty(),
     body('iv').isString().notEmpty(),
-    body('replyToId').optional({ checkFalsy: true }).isUUID(),
+    body('replyToId').optional({ checkFalsy: true }).isString().notEmpty(),
     body('mentions').optional().isArray()
   ],
   logValidationErrors,
