@@ -4,7 +4,7 @@
  */
 import { Request, Response } from 'express';
 import { supabase } from '../utils/supabase';
-import { getIo } from '../server';
+import { getIo } from '../services/socket.manager';
 
 export const getConversations = async (req: any, res: Response) => {
   const userId = req.user?.id;
