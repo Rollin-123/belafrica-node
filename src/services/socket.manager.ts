@@ -27,7 +27,6 @@ export const initializeSocketManager = (httpServer: HttpServer, corsOptions: Cor
   io.use(async (socket: AuthenticatedSocket, next) => {
     const token = socket.handshake.auth.token;
     if (!token) {
-      console.warn('🔒 Connexion socket refusée: pas de token.');
       return next(new Error('Authentication error: no token'));
     }
 
@@ -45,6 +44,7 @@ export const initializeSocketManager = (httpServer: HttpServer, corsOptions: Cor
       }
 
       socket.user = { userId: user.id, pseudo: user.pseudo, community: user.community };
+      socket.data.userId = user.id;
       next();
     } catch (err) {
       return next(new Error('Authentication error: Token invalide'));

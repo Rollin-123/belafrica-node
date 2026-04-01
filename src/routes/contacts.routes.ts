@@ -1,53 +1,97 @@
 /*
- * BELAFRICA - Plateforme diaspora africaine
- * Copyright (c) 2025 Rollin Loic Tianga. Tous droits reserves.
+ * BELAFRICA - Routes contacts (sync téléphone + blocage)
+ * FIX: chemin middleware corrigé: '../middleware/auth.middleware' (sans 's')
+ * FIX: export correct: { protect } (pas authenticateToken)
  */
-import { Router } from 'express';
-import { body, param } from 'express-validator';
+import { Router, Response } from 'express';
+import { supabase } from '../utils/supabase';
 import { protect } from '../middleware/auth.middleware';
-import {
-  searchUserByPhone,
-  searchUserByPseudo,
-  addContact,
-  getContacts,
-  removeContact,
-  blockContact,
-  startPrivateChat
-} from '../controllers/contacts.controller';
 
 const router = Router();
+router.use(protect);
 
-// Rechercher par numéro de téléphone
-router.post('/search', protect, [
-  body('phone').isString().notEmpty().withMessage('Numéro requis')
-], searchUserByPhone);
+/**
+ * POST /api/contacts/sync
+ * Reçoit des numéros de téléphone, retourne les membres BelAfrica correspondants.
+ * Les numéros ne sont JAMAIS stockés côté serveur.
+ */
+router.post('/sync', async (req: any, res: Response) => {
+  const userId = req.user?.id;
+  const { phoneNumbers } = req.body;
 
-// Rechercher par pseudo (membres de la même communauté)
-router.post('/search-pseudo', protect, [
-  body('pseudo').isString().isLength({ min: 2 }).withMessage('Pseudo trop court')
-], searchUserByPseudo);
+  if (!Array.isArray(phoneNumbers) || phoneNumbers.length === 0)
+    return res.status(400).json({ success: false, error: 'phoneNumbers requis' });
 
-// Lister mes contacts
-router.get('/', protect, getContacts);
+  try {
+    const normalized = phoneNumbers.map((n: string) =>
+      n.replace(/\s+/g, '').replace(/[^\d+]/g, '')
+    );
 
-// Ajouter un contact
-router.post('/add', protect, [
-  body('contactUserId').isUUID().withMessage('ID contact invalide')
-], addContact);
+    // Exclure les contacts bloqués
+    const { data: blocks } = await supabase
+      .from('user_blocks').select('blocked_user_id').eq('user_id', userId);
+    const blockedIds = (blocks || []).map((b: any) => b.blocked_user_id);
 
-// Supprimer un contact
-router.delete('/:contactUserId', protect, [
-  param('contactUserId').isUUID()
-], removeContact);
+    const { data: matchedUsers, error } = await supabase
+      .from('users')
+      .select('id, pseudo, avatar_url, phone_number, community')
+      .in('phone_number', normalized)
+      .neq('id', userId);
 
-// Bloquer un contact
-router.post('/block/:contactUserId', protect, [
-  param('contactUserId').isUUID()
-], blockContact);
+    if (error) throw error;
 
-// Démarrer une conversation privée
-router.post('/start-private-chat', protect, [
-  body('contactUserId').isUUID().withMessage('ID contact invalide')
-], startPrivateChat);
+    const contacts = (matchedUsers || [])
+      .filter((u: any) => !blockedIds.includes(u.id))
+      .map((u: any) => ({
+        userId: u.id,
+        pseudo: u.pseudo || 'Membre',
+        avatarUrl: u.avatar_url || null,
+        phoneNumber: u.phone_number,
+        community: u.community
+      }));
+
+    res.status(200).json({ success: true, contacts });
+  } catch (error: any) {
+    console.error('Erreur sync contacts:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/contacts/blocked
+ */
+router.get('/blocked', async (req: any, res: Response) => {
+  const userId = req.user?.id;
+  try {
+    const { data: blocks } = await supabase
+      .from('user_blocks').select('blocked_user_id').eq('user_id', userId);
+    const blockedIds = (blocks || []).map((b: any) => b.blocked_user_id);
+    if (blockedIds.length === 0) return res.status(200).json({ success: true, contacts: [] });
+
+    const { data: users } = await supabase
+      .from('users').select('id, pseudo, avatar_url').in('id', blockedIds);
+    const contacts = (users || []).map((u: any) => ({
+      id: u.id, pseudo: u.pseudo, avatar: u.avatar_url
+    }));
+    res.status(200).json({ success: true, contacts });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/contacts/block/:contactId
+ */
+router.delete('/block/:contactId', async (req: any, res: Response) => {
+  const userId = req.user?.id;
+  const { contactId } = req.params;
+  try {
+    await supabase.from('user_blocks')
+      .delete().eq('user_id', userId).eq('blocked_user_id', contactId);
+    res.status(200).json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 export default router;

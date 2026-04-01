@@ -14,6 +14,7 @@ import authRoutes from './routes/auth.routes';
 import debugRoutes from './routes/debug.routes';
 import postRoutes from './routes/post.routes';
 import adminRoutes from './routes/admin.routes';
+import usersSettingsRoutes from './routes/users-settings.routes';
 import { initializeTelegramBot } from './services/telegram.service';
 import { getAppConstants, handleTelegramWebhook } from './controllers/app.controller';
 import messagingRoutes from './routes/messaging.routes';
@@ -71,7 +72,9 @@ app.use('/api/debug', debugRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/messaging', messagingRoutes);
-app.use('/api/contacts', contactsRoutes);  // ✅ NOUVEAU
+app.use('/api/contacts', contactsRoutes);   
+app.use('/api/users', usersSettingsRoutes);
+app.use('/api/auth', usersSettingsRoutes); 
 
 app.post('/api/telegram-webhook/' + process.env.TELEGRAM_BOT_TOKEN, handleTelegramWebhook);
 
